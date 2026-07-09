@@ -70,3 +70,40 @@ export async function updateCustomer(id, payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function getBuildingSummary() {
+  return apiRequest("/api/buildings/summary");
+}
+
+export async function listBuildings(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.search) {
+    query.set("search", params.search);
+  }
+
+  if (params.status) {
+    query.set("status", params.status);
+  }
+
+  if (params.customer_id) {
+    query.set("customer_id", params.customer_id);
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/buildings${suffix}`);
+}
+
+export async function createBuilding(payload) {
+  return apiRequest("/api/buildings", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateBuilding(id, payload) {
+  return apiRequest(`/api/buildings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}

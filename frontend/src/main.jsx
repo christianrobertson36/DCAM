@@ -16,14 +16,19 @@ import {
   Plus,
   Search,
   Save,
-  X
+  X,
+  MapPin
 } from "lucide-react";
 import {
+  createBuilding,
   createCustomer,
+  getBuildingSummary,
   getCustomerSummary,
   getMe,
+  listBuildings,
   listCustomers,
   login,
+  updateBuilding,
   updateCustomer
 } from "./api";
 import "./styles/main.css";
@@ -61,6 +66,24 @@ const emptyCustomer = {
   primary_contact_email: "",
   primary_contact_phone: "",
   notes: ""
+};
+
+const emptyBuilding = {
+  customer_id: "",
+  name: "",
+  building_type: "Commercial",
+  status: "Active",
+  address_line_1: "",
+  address_line_2: "",
+  city: "",
+  county: "",
+  postcode: "",
+  country: "Romania",
+  access_notes: "",
+  compliance_notes: "",
+  site_contact_name: "",
+  site_contact_email: "",
+  site_contact_phone: ""
 };
 
 function App() {
@@ -138,7 +161,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v3 CRM Foundation</p>
+        <p className="eyebrow">v4 Buildings Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -181,6 +204,10 @@ function LoginScreen({ onLoginSuccess }) {
 function AdminShell({ user, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
 
+  const pageTitle = activePage === "Customers" || activePage === "Buildings"
+    ? activePage
+    : "DCAM Operating System";
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -214,8 +241,8 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v3 CRM Customers</p>
-            <h1>{activePage === "Customers" ? "Customers" : "DCAM Operating System"}</h1>
+            <p className="eyebrow">v4 Buildings / Sites</p>
+            <h1>{pageTitle}</h1>
           </div>
 
           <div className="user-panel">
@@ -230,7 +257,9 @@ function AdminShell({ user, onLogout }) {
           </div>
         </header>
 
-        {activePage === "Customers" ? <CustomersPage /> : <DashboardPage />}
+        {activePage === "Customers" ? <CustomersPage /> : null}
+        {activePage === "Buildings" ? <BuildingsPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -240,13 +269,13 @@ function DashboardPage() {
   const cards = [
     {
       title: "Compliance Status",
-      value: "CRM Ready",
-      text: "Customer records are now connected to the backend."
+      value: "Buildings Ready",
+      text: "Customers and buildings/sites are now connected."
     },
     {
       title: "Open Work Orders",
       value: "0",
-      text: "Work order tracking starts in a future sprint."
+      text: "Work order tracking starts after assets."
     },
     {
       title: "Assets Registered",
@@ -265,9 +294,9 @@ function DashboardPage() {
       <section className="hero">
         <div>
           <p className="eyebrow">Technical Compliance Platform</p>
-          <h2>One system for customers, buildings, assets, engineers, work orders, reports and renewals.</h2>
+          <h2>Customers now have buildings/sites ready for assets, QR codes, jobs and compliance history.</h2>
           <p>
-            DCAM now has the first working CRM foundation. Customers can be created, listed, searched and updated.
+            DCAM now tracks both customer companies and the physical buildings or sites where compliance work happens.
           </p>
         </div>
       </section>
@@ -284,10 +313,10 @@ function DashboardPage() {
 
       <section className="module-grid">
         <Module title="CRM" text="Companies, contacts, pipeline, quotes, contracts and renewals." />
-        <Module title="CMMS" text="Preventive maintenance, reactive jobs, scheduling and work orders." />
+        <Module title="Buildings / Sites" text="Customer buildings, access notes, site contacts and compliance notes." />
         <Module title="Asset Management" text="QR-coded assets with locations, photos, history and certificates." />
+        <Module title="CMMS" text="Preventive maintenance, reactive jobs, scheduling and work orders." />
         <Module title="Technician App" text="Daily jobs, QR scanning, checklists, photos, signatures and offline sync." />
-        <Module title="Customer Portal" text="Customer access to buildings, assets, reports, certificates and requests." />
         <Module title="Automation & AI" text="Renewal reminders, report writing, quotation support and intelligent search." />
       </section>
     </>
@@ -560,6 +589,335 @@ function CustomersPage() {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Customer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BuildingsPage() {
+  const [buildings, setBuildings] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    survey_required: 0,
+    on_hold: 0,
+    inactive: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingBuilding, setEditingBuilding] = useState(null);
+  const [form, setForm] = useState(emptyBuilding);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadBuildings() {
+    const [summaryData, buildingsData, customersData] = await Promise.all([
+      getBuildingSummary(),
+      listBuildings({ search, status, customer_id: customerId }),
+      listCustomers()
+    ]);
+
+    setSummary(summaryData.summary);
+    setBuildings(buildingsData.buildings);
+    setCustomers(customersData.customers);
+  }
+
+  useEffect(() => {
+    loadBuildings().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadBuildings();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingBuilding(null);
+    setForm({
+      ...emptyBuilding,
+      customer_id: customerId || customers[0]?.id || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(building) {
+    setEditingBuilding(building);
+    setForm({
+      ...emptyBuilding,
+      ...building,
+      customer_id: building.customer_id || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingBuilding(null);
+    setForm(emptyBuilding);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveBuilding(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: Number(form.customer_id)
+      };
+
+      if (editingBuilding) {
+        await updateBuilding(editingBuilding.id, payload);
+      } else {
+        await createBuilding(payload);
+      }
+
+      closeForm();
+      await loadBuildings();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = useMemo(
+    () => [
+      { label: "Total Buildings", value: summary.total || 0 },
+      { label: "Active", value: summary.active || 0 },
+      { label: "Survey Required", value: summary.survey_required || 0 },
+      { label: "On Hold", value: summary.on_hold || 0 },
+      { label: "Inactive", value: summary.inactive || 0 }
+    ],
+    [summary]
+  );
+
+  return (
+    <div className="buildings-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Buildings / Sites</p>
+          <h2>Customer buildings and service locations</h2>
+          <p>
+            Link every customer to the buildings where assets, compliance checks and jobs will happen.
+          </p>
+        </div>
+
+        <button className="primary-action" onClick={openCreateForm} disabled={!customers.length}>
+          <Plus size={18} />
+          Add Building
+        </button>
+      </section>
+
+      {!customers.length ? (
+        <div className="login-error">
+          Add a customer first before creating buildings.
+        </div>
+      ) : null}
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar buildings-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search buildings, customer, city or postcode..."
+          />
+        </div>
+
+        <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+          <option value="">All customers</option>
+          {customers.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.company_name}
+            </option>
+          ))}
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Survey Required">Survey Required</option>
+          <option value="On Hold">On Hold</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+
+        <button className="secondary-button" type="submit">
+          Search
+        </button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Buildings</strong>
+          <span>{buildings.length} shown</span>
+        </div>
+
+        {buildings.length ? (
+          <div className="customer-list">
+            {buildings.map((building) => (
+              <button
+                className="customer-row building-row"
+                key={building.id}
+                onClick={() => openEditForm(building)}
+              >
+                <div>
+                  <strong>{building.name}</strong>
+                  <span>{building.customer_name || "No customer"}</span>
+                </div>
+                <div>
+                  <span>{building.building_type}</span>
+                  <span>{building.site_contact_name || "No site contact"}</span>
+                </div>
+                <div>
+                  <span>{building.city || "No city"}</span>
+                  <span>{building.postcode || "No postcode"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${building.status.toLowerCase().replaceAll(" ", "-")}`}>
+                    {building.status}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">
+            No buildings yet. Add a building/site for one of your customers.
+          </div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveBuilding}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingBuilding ? "Edit Building" : "New Building"}</p>
+                <h2>{editingBuilding ? editingBuilding.name : "Add building/site"}</h2>
+              </div>
+
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Customer
+                <select
+                  value={form.customer_id}
+                  onChange={(event) => updateField("customer_id", event.target.value)}
+                  required
+                >
+                  <option value="">Select customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.company_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <Field label="Building / site name" value={form.name} onChange={(value) => updateField("name", value)} required />
+
+              <label>
+                Building type
+                <select value={form.building_type} onChange={(event) => updateField("building_type", event.target.value)}>
+                  <option>Commercial</option>
+                  <option>Office</option>
+                  <option>Retail</option>
+                  <option>Industrial</option>
+                  <option>Residential Block</option>
+                  <option>Hotel / Hospitality</option>
+                  <option>Healthcare</option>
+                  <option>Education</option>
+                  <option>Other</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Active</option>
+                  <option>Survey Required</option>
+                  <option>On Hold</option>
+                  <option>Inactive</option>
+                </select>
+              </label>
+
+              <Field label="Address line 1" value={form.address_line_1} onChange={(value) => updateField("address_line_1", value)} />
+              <Field label="Address line 2" value={form.address_line_2} onChange={(value) => updateField("address_line_2", value)} />
+              <Field label="City" value={form.city} onChange={(value) => updateField("city", value)} />
+              <Field label="County / Region" value={form.county} onChange={(value) => updateField("county", value)} />
+              <Field label="Postcode" value={form.postcode} onChange={(value) => updateField("postcode", value)} />
+              <Field label="Country" value={form.country} onChange={(value) => updateField("country", value)} />
+              <Field label="Site contact name" value={form.site_contact_name} onChange={(value) => updateField("site_contact_name", value)} />
+              <Field label="Site contact email" value={form.site_contact_email} onChange={(value) => updateField("site_contact_email", value)} />
+              <Field label="Site contact phone" value={form.site_contact_phone} onChange={(value) => updateField("site_contact_phone", value)} />
+
+              <label className="wide-field">
+                Access notes
+                <textarea
+                  value={form.access_notes || ""}
+                  onChange={(event) => updateField("access_notes", event.target.value)}
+                  rows={3}
+                  placeholder="Keys, parking, security, reception, entry times..."
+                />
+              </label>
+
+              <label className="wide-field">
+                Compliance notes
+                <textarea
+                  value={form.compliance_notes || ""}
+                  onChange={(event) => updateField("compliance_notes", event.target.value)}
+                  rows={3}
+                  placeholder="Known risks, inspection requirements, service notes..."
+                />
+              </label>
+            </div>
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>
+                Cancel
+              </button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Building"}
               </button>
             </div>
           </form>
