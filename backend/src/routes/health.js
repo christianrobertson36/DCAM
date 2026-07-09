@@ -7,8 +7,8 @@ router.get("/health", (req, res) => {
     ok: true,
     app: "DCAM API",
     name: "Digital Compliance & Asset Management",
-    version: "v1",
-    status: "healthy",
+    version: "v2",
+    status: "healthy", auth: "login-and-roles-foundation",
     modules: [
       "CRM",
       "CMMS",
@@ -24,3 +24,4 @@ router.get("/health", (req, res) => {
 });
 
 module.exports = router;
+

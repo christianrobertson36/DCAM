@@ -1,4 +1,4 @@
-﻿import React from "react";
+﻿import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
@@ -10,8 +10,11 @@ import {
   ShieldCheck,
   Smartphone,
   Settings,
-  CalendarDays
+  CalendarDays,
+  LogOut,
+  LockKeyhole
 } from "lucide-react";
+import { getMe, login } from "./api";
 import "./styles/main.css";
 
 const navItems = [
@@ -32,8 +35,8 @@ const navItems = [
 const cards = [
   {
     title: "Compliance Status",
-    value: "Foundation",
-    text: "Live compliance dashboards will appear here."
+    value: "Auth Ready",
+    text: "Login and role foundation is now in place."
   },
   {
     title: "Open Work Orders",
@@ -53,6 +56,121 @@ const cards = [
 ];
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("dcam_token");
+
+    if (!token) {
+      setCheckingSession(false);
+      return;
+    }
+
+    getMe()
+      .then((data) => setUser(data.user))
+      .catch(() => {
+        localStorage.removeItem("dcam_token");
+        setUser(null);
+      })
+      .finally(() => setCheckingSession(false));
+  }, []);
+
+  function handleLoginSuccess(data) {
+    localStorage.setItem("dcam_token", data.token);
+    setUser(data.user);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("dcam_token");
+    setUser(null);
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="loading-screen">
+        <div className="brand-mark">D</div>
+        <p>Checking DCAM session...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  return <AdminShell user={user} onLogout={handleLogout} />;
+}
+
+function LoginScreen({ onLoginSuccess }) {
+  const [email, setEmail] = useState("admin@dcam.local");
+  const [password, setPassword] = useState("ChangeMe123!");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
+
+    try {
+      const data = await login(email, password);
+      onLoginSuccess(data);
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="login-page">
+      <form className="login-card" onSubmit={handleSubmit}>
+        <div className="login-icon">
+          <LockKeyhole size={30} />
+        </div>
+
+        <p className="eyebrow">v2 Login Foundation</p>
+        <h1>Sign in to DCAM</h1>
+        <p className="login-intro">
+          Digital Compliance & Asset Management for technical compliance operations.
+        </p>
+
+        <label>
+          Email
+          <input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            type="email"
+            autoComplete="email"
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            autoComplete="current-password"
+          />
+        </label>
+
+        {error ? <div className="login-error">{error}</div> : null}
+
+        <button className="primary-button" type="submit" disabled={busy}>
+          {busy ? "Signing in..." : "Sign in"}
+        </button>
+
+        <div className="dev-note">
+          Dev admin: admin@dcam.local / ChangeMe123!
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function AdminShell({ user, onLogout }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -81,10 +199,20 @@ function App() {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v1 Foundation</p>
+            <p className="eyebrow">v2 Login + Roles</p>
             <h1>DCAM Operating System</h1>
           </div>
-          <div className="status-pill">API-first • Mobile-first • Compliance-ready</div>
+
+          <div className="user-panel">
+            <div>
+              <strong>{user.name}</strong>
+              <span>{user.role}</span>
+            </div>
+            <button className="logout-button" onClick={onLogout}>
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
         </header>
 
         <section className="hero">
@@ -92,7 +220,7 @@ function App() {
             <p className="eyebrow">Technical Compliance Platform</p>
             <h2>One system for customers, buildings, assets, engineers, work orders, reports and renewals.</h2>
             <p>
-              DCAM is being built as the digital operating system for a technical compliance and building maintenance company.
+              DCAM now has a working login and role foundation. Next we can add real CRM records and customer management.
             </p>
           </div>
         </section>

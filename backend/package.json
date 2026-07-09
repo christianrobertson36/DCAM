@@ -1,19 +1,23 @@
 {
-  "name": "dcam-api",
-  "version": "1.0.0",
-  "description": "DCAM backend API",
-  "main": "src/server.js",
-  "type": "commonjs",
-  "scripts": {
-    "dev": "node src/server.js",
-    "start": "node src/server.js",
-    "check": "node --check src/server.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "helmet": "^8.0.0",
-    "pg": "^8.13.1"
-  }
+    "name":  "dcam-api",
+    "version":  "1.0.0",
+    "description":  "DCAM backend API",
+    "main":  "src/server.js",
+    "type":  "commonjs",
+    "scripts":  {
+                    "dev":  "node src/server.js",
+                    "start":  "node src/server.js",
+                    "check":  "node --check src/server.js",
+                    "seed:admin":  "node scripts/seed-admin.js",
+                    "check:all":  "node --check src/server.js \u0026\u0026 node --check scripts/seed-admin.js"
+                },
+    "dependencies":  {
+                         "bcryptjs":  "^3.0.3",
+                         "cors":  "^2.8.5",
+                         "dotenv":  "^16.4.7",
+                         "express":  "^4.21.2",
+                         "helmet":  "^8.0.0",
+                         "jsonwebtoken":  "^9.0.3",
+                         "pg":  "^8.13.1"
+                     }
 }
