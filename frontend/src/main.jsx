@@ -3,27 +3,33 @@ import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
   Building2,
+  Download,
   Users,
   LogOut,
   LockKeyhole,
   Plus,
   Search,
   Save,
+  Trash2,
   X
 } from "lucide-react";
 import {
   createAsset,
   createBuilding,
   createCustomer,
+  deleteAssetFile,
+  downloadAssetFile,
   getAssetSummary,
   getBuildingSummary,
   getCustomerSummary,
   getMe,
+  listAssetFiles,
   listAssets,
   listBuildings,
   listCustomers,
   login,
   updateAsset,
+  uploadAssetFile,
   updateBuilding,
   updateCustomer
 } from "./api";
@@ -1070,6 +1076,11 @@ function AssetsPage({ user }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
   const [form, setForm] = useState(emptyAsset);
+  const [assetFiles, setAssetFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileKind, setFileKind] = useState("document");
+  const [fileNotes, setFileNotes] = useState("");
+  const [fileBusy, setFileBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
@@ -1127,6 +1138,10 @@ function AssetsPage({ user }) {
       ...emptyAsset,
       building_id: buildingId || buildings[0]?.id || ""
     });
+    setAssetFiles([]);
+    setSelectedFile(null);
+    setFileNotes("");
+    setFileKind("document");
     setFormOpen(true);
     setError("");
   }
@@ -1142,14 +1157,23 @@ function AssetsPage({ user }) {
       next_service_date: formatDateForInput(asset.next_service_date),
       warranty_expiry: formatDateForInput(asset.warranty_expiry)
     });
+    setAssetFiles([]);
+    setSelectedFile(null);
+    setFileNotes("");
+    setFileKind("document");
     setFormOpen(true);
     setError("");
+    loadAssetFiles(asset.id).catch((err) => setError(err.message));
   }
 
   function closeForm() {
     setFormOpen(false);
     setEditingAsset(null);
     setForm(emptyAsset);
+    setAssetFiles([]);
+    setSelectedFile(null);
+    setFileNotes("");
+    setFileKind("document");
   }
 
   function updateField(field, value) {
@@ -1182,6 +1206,75 @@ function AssetsPage({ user }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadAssetFiles(assetId) {
+    const data = await listAssetFiles(assetId);
+    setAssetFiles(data.files || []);
+  }
+
+  async function saveAssetFile(event) {
+    event.preventDefault();
+
+    if (!editingAsset || !selectedFile) {
+      return;
+    }
+
+    setFileBusy(true);
+    setError("");
+
+    try {
+      const contentBase64 = await fileToBase64(selectedFile);
+      await uploadAssetFile(editingAsset.id, {
+        file_kind: fileKind,
+        original_filename: selectedFile.name,
+        content_type: selectedFile.type || "application/octet-stream",
+        content_base64: contentBase64,
+        notes: fileNotes
+      });
+      setSelectedFile(null);
+      setFileNotes("");
+      setFileKind("document");
+      await loadAssetFiles(editingAsset.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFileBusy(false);
+    }
+  }
+
+  async function downloadFile(file) {
+    try {
+      const blob = await downloadAssetFile(editingAsset.id, file.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.original_filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function removeFile(file) {
+    if (!editingAsset || !window.confirm(`Delete ${file.original_filename}?`)) {
+      return;
+    }
+
+    setFileBusy(true);
+    setError("");
+
+    try {
+      await deleteAssetFile(editingAsset.id, file.id);
+      await loadAssetFiles(editingAsset.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFileBusy(false);
     }
   }
 
@@ -1480,6 +1573,82 @@ function AssetsPage({ user }) {
               </label>
             </div>
 
+            {editingAsset ? (
+              <section className="asset-files-panel">
+                <div className="table-header">
+                  <strong>Documents and Photos</strong>
+                  <span>{assetFiles.length} files</span>
+                </div>
+
+                <div className="asset-upload-grid">
+                  <label>
+                    Type
+                    <select value={fileKind} onChange={(event) => setFileKind(event.target.value)}>
+                      <option value="document">Document</option>
+                      <option value="photo">Photo</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    File
+                    <input
+                      type="file"
+                      accept={fileKind === "photo" ? "image/*" : undefined}
+                      onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                    />
+                  </label>
+
+                  <label className="wide-field">
+                    File notes
+                    <textarea
+                      value={fileNotes}
+                      onChange={(event) => setFileNotes(event.target.value)}
+                      rows={2}
+                      placeholder="Certificate, inspection photo, warranty PDF..."
+                    />
+                  </label>
+
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={saveAssetFile}
+                    disabled={!selectedFile || fileBusy}
+                  >
+                    <Plus size={16} />
+                    {fileBusy ? "Uploading..." : "Upload"}
+                  </button>
+                </div>
+
+                {assetFiles.length ? (
+                  <div className="asset-file-list">
+                    {assetFiles.map((file) => (
+                      <div className="asset-file-row" key={file.id}>
+                        <div>
+                          <strong>{file.original_filename}</strong>
+                          <span>{file.file_kind} / {formatFileSize(file.file_size)}</span>
+                          {file.notes ? <span>{file.notes}</span> : null}
+                        </div>
+                        <div className="file-actions">
+                          <button className="icon-button" type="button" onClick={() => downloadFile(file)}>
+                            <Download size={16} />
+                          </button>
+                          {canEditAsset ? (
+                            <button className="icon-button danger-button" type="button" onClick={() => removeFile(file)} disabled={fileBusy}>
+                              <Trash2 size={16} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    No documents or photos uploaded for this asset yet.
+                  </div>
+                )}
+              </section>
+            ) : null}
+
             <div className="form-actions">
               <button className="secondary-button" type="button" onClick={closeForm}>
                 Cancel
@@ -1510,6 +1679,30 @@ function formatDateForDisplay(value) {
   }
 
   return String(value).slice(0, 10);
+}
+
+function formatFileSize(value) {
+  const size = Number(value || 0);
+
+  if (size >= 1024 * 1024) {
+    return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`;
+  }
+
+  return `${size} bytes`;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function Field({ label, value, onChange, required, type = "text", placeholder = "" }) {

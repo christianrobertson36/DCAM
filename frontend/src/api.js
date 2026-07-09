@@ -35,6 +35,30 @@ export async function apiRequest(path, options = {}) {
   return data;
 }
 
+export async function apiBlobRequest(path, options = {}) {
+  const token = getStoredToken();
+  const headers = {
+    ...(options.headers || {})
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    const message = data?.error || data?.message || "Request failed";
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+
 export async function login(email, password) {
   return apiRequest("/auth/login", {
     method: "POST",
@@ -166,5 +190,26 @@ export async function updateAsset(id, payload) {
   return apiRequest(`/api/assets/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function listAssetFiles(assetId) {
+  return apiRequest(`/api/assets/${assetId}/files`);
+}
+
+export async function uploadAssetFile(assetId, payload) {
+  return apiRequest(`/api/assets/${assetId}/files`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function downloadAssetFile(assetId, fileId) {
+  return apiBlobRequest(`/api/assets/${assetId}/files/${fileId}/download`);
+}
+
+export async function deleteAssetFile(assetId, fileId) {
+  return apiRequest(`/api/assets/${assetId}/files/${fileId}`, {
+    method: "DELETE"
   });
 }

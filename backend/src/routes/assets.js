@@ -1,4 +1,7 @@
 const express = require("express");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const { PERMISSIONS } = require("../config/permissions");
 const { getPool } = require("../db/pool");
@@ -6,6 +9,7 @@ const { authRequired, requirePermission } = require("../middleware/authRequired"
 const { writeAuditEvent } = require("../utils/audit");
 
 const router = express.Router();
+const uploadRoot = path.resolve(process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads"));
 
 router.use(authRequired);
 
@@ -73,6 +77,49 @@ function publicAsset(row) {
     created_at: row.created_at,
     updated_at: row.updated_at
   };
+}
+
+function publicAssetFile(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    asset_id: row.asset_id,
+    file_kind: row.file_kind,
+    original_filename: row.original_filename,
+    content_type: row.content_type,
+    file_size: row.file_size,
+    notes: row.notes,
+    uploaded_by: row.uploaded_by,
+    created_at: row.created_at
+  };
+}
+
+function cleanFileKind(value) {
+  const text = cleanText(value);
+  return text === "photo" ? "photo" : "document";
+}
+
+function cleanFilename(value) {
+  const text = cleanText(value) || "asset-file";
+  return text.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").slice(0, 180);
+}
+
+function decodeBase64File(value) {
+  const text = cleanText(value);
+
+  if (!text) {
+    return null;
+  }
+
+  const payload = text.includes(",") ? text.split(",").pop() : text;
+  return Buffer.from(payload, "base64");
+}
+
+function assetUploadDir(assetId) {
+  return path.join(uploadRoot, "assets", String(assetId));
 }
 
 async function nextAssetReference(pool) {
@@ -274,6 +321,240 @@ router.get("/:id", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, 
     return res.json({
       ok: true,
       asset: publicAsset(asset)
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/:id/files", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid asset ID"
+      });
+    }
+
+    const asset = await joinedAsset(pool, id);
+
+    if (!asset) {
+      return res.status(404).json({
+        ok: false,
+        error: "Asset not found"
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM asset_files
+      WHERE asset_id = $1
+      ORDER BY created_at DESC, id DESC
+      `,
+      [id]
+    );
+
+    return res.json({
+      ok: true,
+      files: result.rows.map(publicAssetFile)
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/:id/files", requirePermission(PERMISSIONS.ASSETS_EDIT), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const content = decodeBase64File(req.body.content_base64);
+    const originalFilename = cleanFilename(req.body.original_filename);
+    const contentType = cleanText(req.body.content_type) || "application/octet-stream";
+    const fileKind = cleanFileKind(req.body.file_kind);
+
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid asset ID"
+      });
+    }
+
+    if (!content || !content.length) {
+      return res.status(400).json({
+        ok: false,
+        error: "File content is required"
+      });
+    }
+
+    if (content.length > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        ok: false,
+        error: "File must be 5MB or smaller"
+      });
+    }
+
+    const asset = await joinedAsset(pool, id);
+
+    if (!asset) {
+      return res.status(404).json({
+        ok: false,
+        error: "Asset not found"
+      });
+    }
+
+    const extension = path.extname(originalFilename).slice(0, 12);
+    const storedFilename = `${Date.now()}-${crypto.randomBytes(12).toString("hex")}${extension}`;
+    const directory = assetUploadDir(id);
+
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, storedFilename), content);
+
+    const result = await pool.query(
+      `
+      INSERT INTO asset_files (
+        asset_id,
+        file_kind,
+        original_filename,
+        stored_filename,
+        content_type,
+        file_size,
+        notes,
+        uploaded_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+      `,
+      [
+        id,
+        fileKind,
+        originalFilename,
+        storedFilename,
+        contentType,
+        content.length,
+        cleanText(req.body.notes),
+        req.user.id
+      ]
+    );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "asset.file_uploaded",
+      entityType: "asset",
+      entityId: id,
+      metadata: {
+        asset_reference: asset.asset_reference,
+        asset_name: asset.asset_name,
+        file_id: result.rows[0].id,
+        file_kind: result.rows[0].file_kind,
+        original_filename: result.rows[0].original_filename,
+        file_size: result.rows[0].file_size
+      }
+    });
+
+    return res.status(201).json({
+      ok: true,
+      file: publicAssetFile(result.rows[0])
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/:id/files/:fileId/download", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const fileId = cleanInteger(req.params.fileId);
+
+    if (!id || !fileId) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid file request"
+      });
+    }
+
+    const result = await pool.query(
+      "SELECT * FROM asset_files WHERE id = $1 AND asset_id = $2 LIMIT 1",
+      [fileId, id]
+    );
+    const file = result.rows[0];
+
+    if (!file) {
+      return res.status(404).json({
+        ok: false,
+        error: "File not found"
+      });
+    }
+
+    const filePath = path.join(assetUploadDir(id), file.stored_filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        ok: false,
+        error: "Stored file not found"
+      });
+    }
+
+    res.setHeader("Content-Type", file.content_type);
+    res.setHeader("Content-Disposition", `attachment; filename="${cleanFilename(file.original_filename)}"`);
+    return res.sendFile(filePath);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.delete("/:id/files/:fileId", requirePermission(PERMISSIONS.ASSETS_EDIT), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const fileId = cleanInteger(req.params.fileId);
+
+    if (!id || !fileId) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid file request"
+      });
+    }
+
+    const result = await pool.query(
+      "SELECT * FROM asset_files WHERE id = $1 AND asset_id = $2 LIMIT 1",
+      [fileId, id]
+    );
+    const file = result.rows[0];
+
+    if (!file) {
+      return res.status(404).json({
+        ok: false,
+        error: "File not found"
+      });
+    }
+
+    await pool.query("DELETE FROM asset_files WHERE id = $1", [fileId]);
+
+    const filePath = path.join(assetUploadDir(id), file.stored_filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "asset.file_deleted",
+      entityType: "asset",
+      entityId: id,
+      metadata: {
+        file_id: file.id,
+        file_kind: file.file_kind,
+        original_filename: file.original_filename,
+        file_size: file.file_size
+      }
+    });
+
+    return res.json({
+      ok: true
     });
   } catch (err) {
     return next(err);

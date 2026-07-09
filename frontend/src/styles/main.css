@@ -686,6 +686,55 @@ h1 {
   justify-content: flex-end;
 }
 
+.asset-files-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
+.asset-upload-grid {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 150px minmax(220px, 1fr) minmax(260px, 1.2fr) auto;
+  margin-top: 14px;
+}
+
+.asset-file-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.asset-file-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.asset-file-row div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.asset-file-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.danger-button {
+  color: #991b1b;
+}
+
 @media (max-width: 900px) {
   .page-intro,
   .form-header,
@@ -697,8 +746,15 @@ h1 {
   .mini-card-grid,
   .filter-bar,
   .customer-row,
-  .form-grid {
+  .form-grid,
+  .asset-upload-grid {
     grid-template-columns: 1fr;
+  }
+
+  .asset-file-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
   }
 }
 
