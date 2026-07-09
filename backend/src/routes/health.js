@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 
 const router = express.Router();
 
@@ -7,10 +7,15 @@ router.get("/health", (req, res) => {
     ok: true,
     app: "DCAM API",
     name: "Digital Compliance & Asset Management",
-    version: "v4",
-    status: "healthy", auth: "login-and-roles-foundation", crm: "customers-foundation", buildings: "buildings-sites-foundation",
+    version: "v7",
+    status: "healthy",
+    auth: "login-roles-permissions-foundation",
+    crm: "customers-foundation",
+    buildings: "buildings-sites-foundation",
+    audit: "audit-events-foundation",
     modules: [
       "CRM",
+      "Buildings / Sites",
       "CMMS",
       "Asset Management",
       "Work Orders",
@@ -24,6 +29,3 @@ router.get("/health", (req, res) => {
 });
 
 module.exports = router;
-
-
-

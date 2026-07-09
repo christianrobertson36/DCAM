@@ -23,7 +23,7 @@
     build:
       context: .
       dockerfile: backend/Dockerfile
-    image: dcam-api:v5
+    image: ghcr.io/christianrobertson36/dcam-api:v7
     container_name: dcam-api
     restart: unless-stopped
     environment:
@@ -35,7 +35,7 @@
       SEED_ADMIN_PASSWORD: ChangeMe123!
       SEED_ADMIN_NAME: DCAM Super Admin
     ports:
-      - "5055:5055"
+      - "5056:5055"
     depends_on:
       db:
         condition: service_healthy
@@ -46,11 +46,11 @@
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://localhost:5055
-    image: dcam-web:v5
+        VITE_API_URL: http://localhost:5056
+    image: ghcr.io/christianrobertson36/dcam-web:v7
     container_name: dcam-web
     restart: unless-stopped
     ports:
-      - "3095:80"
+      - "3096:80"
     depends_on:
       - api

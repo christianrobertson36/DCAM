@@ -4,20 +4,12 @@ import {
   LayoutDashboard,
   Building2,
   Users,
-  ClipboardList,
-  QrCode,
-  FileText,
-  ShieldCheck,
-  Smartphone,
-  Settings,
-  CalendarDays,
   LogOut,
   LockKeyhole,
   Plus,
   Search,
   Save,
-  X,
-  MapPin
+  X
 } from "lucide-react";
 import {
   createBuilding,
@@ -33,19 +25,20 @@ import {
 } from "./api";
 import "./styles/main.css";
 
+const PERMISSIONS = {
+  DASHBOARD_VIEW: "dashboard:view",
+  CUSTOMERS_VIEW: "customers:view",
+  CUSTOMERS_CREATE: "customers:create",
+  CUSTOMERS_EDIT: "customers:edit",
+  BUILDINGS_VIEW: "buildings:view",
+  BUILDINGS_CREATE: "buildings:create",
+  BUILDINGS_EDIT: "buildings:edit"
+};
+
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "CRM", icon: Users },
-  { label: "Customers", icon: Users },
-  { label: "Buildings", icon: Building2 },
-  { label: "Assets", icon: QrCode },
-  { label: "Work Orders", icon: ClipboardList },
-  { label: "Schedule", icon: CalendarDays },
-  { label: "Reports", icon: FileText },
-  { label: "Certificates", icon: ShieldCheck },
-  { label: "Technician App", icon: Smartphone },
-  { label: "Customer Portal", icon: Building2 },
-  { label: "Settings", icon: Settings }
+  { label: "Dashboard", icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
+  { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
+  { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW }
 ];
 
 const emptyCustomer = {
@@ -85,6 +78,10 @@ const emptyBuilding = {
   site_contact_email: "",
   site_contact_phone: ""
 };
+
+function hasPermission(user, permission) {
+  return Array.isArray(user?.permissions) && user.permissions.includes(permission);
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -161,7 +158,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v4 Buildings Foundation</p>
+        <p className="eyebrow">v7 Permissions Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -203,6 +200,16 @@ function LoginScreen({ onLoginSuccess }) {
 
 function AdminShell({ user, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => hasPermission(user, item.permission)),
+    [user]
+  );
+
+  useEffect(() => {
+    if (!visibleNavItems.some((item) => item.label === activePage)) {
+      setActivePage(visibleNavItems[0]?.label || "Dashboard");
+    }
+  }, [activePage, visibleNavItems]);
 
   const pageTitle = activePage === "Customers" || activePage === "Buildings"
     ? activePage
@@ -220,7 +227,7 @@ function AdminShell({ user, onLogout }) {
         </div>
 
         <nav className="nav-list">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = item.label === activePage;
 
@@ -241,7 +248,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v4 Buildings / Sites</p>
+            <p className="eyebrow">v7 Permissions Foundation</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -257,8 +264,8 @@ function AdminShell({ user, onLogout }) {
           </div>
         </header>
 
-        {activePage === "Customers" ? <CustomersPage /> : null}
-        {activePage === "Buildings" ? <BuildingsPage /> : null}
+        {activePage === "Customers" ? <CustomersPage user={user} /> : null}
+        {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage !== "Customers" && activePage !== "Buildings" ? <DashboardPage /> : null}
       </main>
     </div>
@@ -323,7 +330,7 @@ function DashboardPage() {
   );
 }
 
-function CustomersPage() {
+function CustomersPage({ user }) {
   const [customers, setCustomers] = useState([]);
   const [summary, setSummary] = useState({
     total: 0,
@@ -339,6 +346,8 @@ function CustomersPage() {
   const [form, setForm] = useState(emptyCustomer);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const canCreateCustomer = hasPermission(user, PERMISSIONS.CUSTOMERS_CREATE);
+  const canEditCustomer = hasPermission(user, PERMISSIONS.CUSTOMERS_EDIT);
 
   async function loadCustomers() {
     const [summaryData, customersData] = await Promise.all([
@@ -438,10 +447,12 @@ function CustomersPage() {
           </p>
         </div>
 
-        <button className="primary-action" onClick={openCreateForm}>
-          <Plus size={18} />
-          Add Customer
-        </button>
+        {canCreateCustomer ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Customer
+          </button>
+        ) : null}
       </section>
 
       <section className="mini-card-grid">
@@ -490,7 +501,12 @@ function CustomersPage() {
               <button
                 className="customer-row"
                 key={customer.id}
-                onClick={() => openEditForm(customer)}
+                onClick={() => {
+                  if (canEditCustomer) {
+                    openEditForm(customer);
+                  }
+                }}
+                disabled={!canEditCustomer}
               >
                 <div>
                   <strong>{customer.company_name}</strong>
@@ -598,7 +614,7 @@ function CustomersPage() {
   );
 }
 
-function BuildingsPage() {
+function BuildingsPage({ user }) {
   const [buildings, setBuildings] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [summary, setSummary] = useState({
@@ -616,17 +632,25 @@ function BuildingsPage() {
   const [form, setForm] = useState(emptyBuilding);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canCreateBuilding = hasPermission(user, PERMISSIONS.BUILDINGS_CREATE);
+  const canEditBuilding = hasPermission(user, PERMISSIONS.BUILDINGS_EDIT);
 
   async function loadBuildings() {
-    const [summaryData, buildingsData, customersData] = await Promise.all([
+    const requests = [
       getBuildingSummary(),
-      listBuildings({ search, status, customer_id: customerId }),
-      listCustomers()
-    ]);
+      listBuildings({ search, status, customer_id: canViewCustomers ? customerId : "" })
+    ];
+
+    if (canViewCustomers) {
+      requests.push(listCustomers());
+    }
+
+    const [summaryData, buildingsData, customersData] = await Promise.all(requests);
 
     setSummary(summaryData.summary);
     setBuildings(buildingsData.buildings);
-    setCustomers(customersData.customers);
+    setCustomers(customersData?.customers || []);
   }
 
   useEffect(() => {
@@ -726,13 +750,15 @@ function BuildingsPage() {
           </p>
         </div>
 
-        <button className="primary-action" onClick={openCreateForm} disabled={!customers.length}>
-          <Plus size={18} />
-          Add Building
-        </button>
+        {canCreateBuilding ? (
+          <button className="primary-action" onClick={openCreateForm} disabled={!customers.length}>
+            <Plus size={18} />
+            Add Building
+          </button>
+        ) : null}
       </section>
 
-      {!customers.length ? (
+      {canCreateBuilding && !customers.length ? (
         <div className="login-error">
           Add a customer first before creating buildings.
         </div>
@@ -757,14 +783,16 @@ function BuildingsPage() {
           />
         </div>
 
-        <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
-          <option value="">All customers</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.company_name}
-            </option>
-          ))}
-        </select>
+        {canViewCustomers ? (
+          <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+            <option value="">All customers</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.company_name}
+              </option>
+            ))}
+          </select>
+        ) : null}
 
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">All statuses</option>
@@ -793,7 +821,12 @@ function BuildingsPage() {
               <button
                 className="customer-row building-row"
                 key={building.id}
-                onClick={() => openEditForm(building)}
+                onClick={() => {
+                  if (canEditBuilding) {
+                    openEditForm(building);
+                  }
+                }}
+                disabled={!canEditBuilding}
               >
                 <div>
                   <strong>{building.name}</strong>

@@ -1,7 +1,9 @@
-﻿const express = require("express");
+const express = require("express");
 
+const { PERMISSIONS } = require("../config/permissions");
 const { getPool } = require("../db/pool");
-const { authRequired } = require("../middleware/authRequired");
+const { authRequired, requirePermission } = require("../middleware/authRequired");
+const { writeAuditEvent } = require("../utils/audit");
 
 const router = express.Router();
 
@@ -65,7 +67,7 @@ async function customerExists(pool, customerId) {
   return Boolean(result.rows[0]);
 }
 
-router.get("/", async (req, res, next) => {
+router.get("/", requirePermission(PERMISSIONS.BUILDINGS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
     const search = cleanText(req.query.search);
@@ -121,7 +123,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/summary", async (req, res, next) => {
+router.get("/summary", requirePermission(PERMISSIONS.BUILDINGS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
 
@@ -146,7 +148,7 @@ router.get("/summary", async (req, res, next) => {
   }
 });
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", requirePermission(PERMISSIONS.BUILDINGS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
     const id = cleanInteger(req.params.id);
@@ -189,7 +191,7 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", requirePermission(PERMISSIONS.BUILDINGS_CREATE), async (req, res, next) => {
   try {
     const pool = getPool();
 
@@ -235,7 +237,7 @@ router.post("/", async (req, res, next) => {
       cleanText(req.body.site_contact_name),
       cleanText(req.body.site_contact_email),
       cleanText(req.body.site_contact_phone),
-      req.user.sub
+      req.user.id
     ];
 
     const result = await pool.query(
@@ -282,6 +284,18 @@ router.post("/", async (req, res, next) => {
       [result.rows[0].id]
     );
 
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "building.created",
+      entityType: "building",
+      entityId: result.rows[0].id,
+      metadata: {
+        customer_id: result.rows[0].customer_id,
+        name: result.rows[0].name,
+        status: result.rows[0].status
+      }
+    });
+
     return res.status(201).json({
       ok: true,
       building: publicBuilding(joined.rows[0])
@@ -291,7 +305,7 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.patch("/:id", async (req, res, next) => {
+router.patch("/:id", requirePermission(PERMISSIONS.BUILDINGS_EDIT), async (req, res, next) => {
   try {
     const pool = getPool();
     const id = cleanInteger(req.params.id);
@@ -356,7 +370,7 @@ router.patch("/:id", async (req, res, next) => {
       cleanText(req.body.site_contact_name),
       cleanText(req.body.site_contact_email),
       cleanText(req.body.site_contact_phone),
-      req.user.sub,
+      req.user.id,
       id
     ];
 
@@ -398,6 +412,20 @@ router.patch("/:id", async (req, res, next) => {
       `,
       [id]
     );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "building.updated",
+      entityType: "building",
+      entityId: id,
+      metadata: {
+        previous_customer_id: existing.rows[0].customer_id,
+        customer_id: joined.rows[0].customer_id,
+        name: joined.rows[0].name,
+        previous_status: existing.rows[0].status,
+        status: joined.rows[0].status
+      }
+    });
 
     return res.json({
       ok: true,

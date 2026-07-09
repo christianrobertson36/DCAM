@@ -1,22 +1,24 @@
-﻿const express = require("express");
+const express = require("express");
+
+const { PERMISSIONS } = require("../config/permissions");
+const { authRequired, requirePermission } = require("../middleware/authRequired");
 
 const router = express.Router();
 
-const placeholder = (moduleName) => (req, res) => {
-  res.json({
-    ok: true,
+router.use(authRequired);
+
+const notImplemented = (moduleName) => (req, res) => {
+  res.status(501).json({
+    ok: false,
     module: moduleName,
-    version: "v1",
-    message: moduleName + " API placeholder created. Full CRUD planned in upcoming sprints."
+    error: moduleName + " is not implemented yet"
   });
 };
 
-router.get("/customers", placeholder("Customers"));
-router.get("/contacts", placeholder("Contacts"));
-router.get("/buildings", placeholder("Buildings"));
-router.get("/assets", placeholder("Assets"));
-router.get("/work-orders", placeholder("Work Orders"));
-router.get("/reports", placeholder("Reports"));
-router.get("/certificates", placeholder("Certificates"));
+router.get("/contacts", requirePermission(PERMISSIONS.CUSTOMERS_VIEW), notImplemented("Contacts"));
+router.get("/assets", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Assets"));
+router.get("/work-orders", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Work Orders"));
+router.get("/reports", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Reports"));
+router.get("/certificates", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Certificates"));
 
 module.exports = router;

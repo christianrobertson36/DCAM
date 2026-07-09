@@ -550,6 +550,14 @@ h1 {
   background: #f8fafc;
 }
 
+.customer-row:disabled {
+  cursor: default;
+}
+
+.customer-row:disabled:hover {
+  background: transparent;
+}
+
 .customer-row strong,
 .customer-row span {
   display: block;

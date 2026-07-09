@@ -1,7 +1,9 @@
-﻿const express = require("express");
+const express = require("express");
 
+const { PERMISSIONS } = require("../config/permissions");
 const { getPool } = require("../db/pool");
-const { authRequired } = require("../middleware/authRequired");
+const { authRequired, requirePermission } = require("../middleware/authRequired");
+const { writeAuditEvent } = require("../utils/audit");
 
 const router = express.Router();
 
@@ -47,7 +49,7 @@ function publicCustomer(row) {
   };
 }
 
-router.get("/", async (req, res, next) => {
+router.get("/", requirePermission(PERMISSIONS.CUSTOMERS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
     const search = cleanText(req.query.search);
@@ -94,7 +96,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/summary", async (req, res, next) => {
+router.get("/summary", requirePermission(PERMISSIONS.CUSTOMERS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
 
@@ -119,7 +121,7 @@ router.get("/summary", async (req, res, next) => {
   }
 });
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", requirePermission(PERMISSIONS.CUSTOMERS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
     const id = Number(req.params.id);
@@ -154,7 +156,7 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", requirePermission(PERMISSIONS.CUSTOMERS_CREATE), async (req, res, next) => {
   try {
     const pool = getPool();
 
@@ -185,7 +187,7 @@ router.post("/", async (req, res, next) => {
       cleanText(req.body.primary_contact_email),
       cleanText(req.body.primary_contact_phone),
       cleanText(req.body.notes),
-      req.user.sub
+      req.user.id
     ];
 
     const result = await pool.query(
@@ -221,6 +223,17 @@ router.post("/", async (req, res, next) => {
       values
     );
 
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "customer.created",
+      entityType: "customer",
+      entityId: result.rows[0].id,
+      metadata: {
+        company_name: result.rows[0].company_name,
+        status: result.rows[0].status
+      }
+    });
+
     return res.status(201).json({
       ok: true,
       customer: publicCustomer(result.rows[0])
@@ -230,7 +243,7 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.patch("/:id", async (req, res, next) => {
+router.patch("/:id", requirePermission(PERMISSIONS.CUSTOMERS_EDIT), async (req, res, next) => {
   try {
     const pool = getPool();
     const id = Number(req.params.id);
@@ -281,7 +294,7 @@ router.patch("/:id", async (req, res, next) => {
       cleanText(req.body.primary_contact_email),
       cleanText(req.body.primary_contact_phone),
       cleanText(req.body.notes),
-      req.user.sub,
+      req.user.id,
       id
     ];
 
@@ -313,6 +326,18 @@ router.patch("/:id", async (req, res, next) => {
       `,
       values
     );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "customer.updated",
+      entityType: "customer",
+      entityId: result.rows[0].id,
+      metadata: {
+        company_name: result.rows[0].company_name,
+        previous_status: existing.rows[0].status,
+        status: result.rows[0].status
+      }
+    });
 
     return res.json({
       ok: true,
