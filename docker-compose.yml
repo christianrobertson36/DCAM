@@ -1,6 +1,4 @@
-﻿version: "3.9"
-
-services:
+﻿services:
   db:
     image: postgres:16
     container_name: dcam-db
@@ -14,22 +12,28 @@ services:
     ports:
       - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dcam -d dcam"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U dcam -d dcam
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   api:
     build:
-      context: ./backend
-    image: dcam-api:v1
+      context: .
+      dockerfile: backend/Dockerfile
+    image: dcam-api:v5
     container_name: dcam-api
     restart: unless-stopped
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 5055
       DATABASE_URL: postgres://dcam:dcam_password@db:5432/dcam
-      JWT_SECRET: change_this_in_production
+      JWT_SECRET: local_dev_secret_change_later
+      SEED_ADMIN_EMAIL: admin@dcam.local
+      SEED_ADMIN_PASSWORD: ChangeMe123!
+      SEED_ADMIN_NAME: DCAM Super Admin
     ports:
       - "5055:5055"
     depends_on:
@@ -41,11 +45,11 @@ services:
   web:
     build:
       context: ./frontend
-    image: dcam-web:v1
+      args:
+        VITE_API_URL: http://localhost:5055
+    image: dcam-web:v5
     container_name: dcam-web
     restart: unless-stopped
-    environment:
-      VITE_API_URL: http://localhost:5055
     ports:
       - "3095:80"
     depends_on:

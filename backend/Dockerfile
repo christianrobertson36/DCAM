@@ -1,12 +1,19 @@
 ﻿FROM node:22-alpine
 
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend/package*.json ./
 RUN npm install --omit=dev
 
-COPY src ./src
+COPY backend/src ./src
+COPY backend/scripts ./scripts
+COPY database ./database
+COPY backend/docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 5055
 
-CMD ["npm", "start"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
