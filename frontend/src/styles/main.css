@@ -19,6 +19,28 @@ button {
   font: inherit;
 }
 
+.app-fallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: #475569;
+}
+
+.app-fallback h1 {
+  color: #14213d;
+  margin: 0;
+}
+
+.app-fallback p {
+  max-width: 420px;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;

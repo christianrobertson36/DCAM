@@ -25,6 +25,30 @@ import {
 } from "./api";
 import "./styles/main.css";
 
+function safeGetStorageItem(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (err) {
+    return null;
+  }
+}
+
+function safeSetStorageItem(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (err) {
+    // The app can still run for this page load if persistent storage is blocked.
+  }
+}
+
+function safeRemoveStorageItem(key) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (err) {
+    // Ignore storage cleanup failures from private or restricted browser modes.
+  }
+}
+
 const PERMISSIONS = {
   DASHBOARD_VIEW: "dashboard:view",
   CUSTOMERS_VIEW: "customers:view",
@@ -87,12 +111,41 @@ function statusClassName(status) {
   return String(status || "").toLowerCase().split(" ").join("-");
 }
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      error: null
+    };
+  }
+
+  static getDerivedStateFromError(error) {
+    return {
+      error
+    };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="app-fallback">
+          <div className="brand-mark">D</div>
+          <h1>DCAM could not start</h1>
+          <p>{this.state.error.message || "The browser blocked part of the application startup."}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("dcam_token");
+    const token = safeGetStorageItem("dcam_token");
 
     if (!token) {
       setCheckingSession(false);
@@ -102,19 +155,19 @@ function App() {
     getMe()
       .then((data) => setUser(data.user))
       .catch(() => {
-        localStorage.removeItem("dcam_token");
+        safeRemoveStorageItem("dcam_token");
         setUser(null);
       })
       .finally(() => setCheckingSession(false));
   }, []);
 
   function handleLoginSuccess(data) {
-    localStorage.setItem("dcam_token", data.token);
+    safeSetStorageItem("dcam_token", data.token);
     setUser(data.user);
   }
 
   function handleLogout() {
-    localStorage.removeItem("dcam_token");
+    safeRemoveStorageItem("dcam_token");
     setUser(null);
   }
 
@@ -986,4 +1039,8 @@ function Module({ title, text }) {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  <AppErrorBoundary>
+    <App />
+  </AppErrorBoundary>
+);
