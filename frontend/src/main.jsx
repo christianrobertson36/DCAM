@@ -113,10 +113,14 @@ const emptyBuilding = {
 
 const emptyAsset = {
   building_id: "",
+  asset_reference: "",
   asset_name: "",
   asset_tag: "",
+  asset_category: "General",
   asset_type: "General",
   status: "Active",
+  condition: "Unknown",
+  ownership_type: "Customer Owned",
   manufacturer: "",
   model: "",
   serial_number: "",
@@ -124,6 +128,9 @@ const emptyAsset = {
   install_date: "",
   last_service_date: "",
   next_service_date: "",
+  warranty_provider: "",
+  warranty_reference: "",
+  warranty_expiry: "",
   notes: ""
 };
 
@@ -1055,7 +1062,9 @@ function AssetsPage({ user }) {
   });
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [assetCategory, setAssetCategory] = useState("");
   const [assetType, setAssetType] = useState("");
+  const [condition, setCondition] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [buildingId, setBuildingId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -1073,7 +1082,9 @@ function AssetsPage({ user }) {
     const assetsRequest = listAssets({
       search,
       status,
+      asset_category: assetCategory,
       asset_type: assetType,
+      condition,
       customer_id: canViewCustomers ? customerId : "",
       building_id: canViewBuildings ? buildingId : ""
     });
@@ -1128,7 +1139,8 @@ function AssetsPage({ user }) {
       building_id: asset.building_id || "",
       install_date: formatDateForInput(asset.install_date),
       last_service_date: formatDateForInput(asset.last_service_date),
-      next_service_date: formatDateForInput(asset.next_service_date)
+      next_service_date: formatDateForInput(asset.next_service_date),
+      warranty_expiry: formatDateForInput(asset.warranty_expiry)
     });
     setFormOpen(true);
     setError("");
@@ -1250,6 +1262,18 @@ function AssetsPage({ user }) {
           </select>
         ) : null}
 
+        <select value={assetCategory} onChange={(event) => setAssetCategory(event.target.value)}>
+          <option value="">All categories</option>
+          <option value="General">General</option>
+          <option value="Compliance">Compliance</option>
+          <option value="Plant">Plant</option>
+          <option value="Safety">Safety</option>
+          <option value="Security">Security</option>
+          <option value="Fabric">Fabric</option>
+          <option value="IT">IT</option>
+          <option value="Other">Other</option>
+        </select>
+
         <select value={assetType} onChange={(event) => setAssetType(event.target.value)}>
           <option value="">All types</option>
           <option value="General">General</option>
@@ -1260,6 +1284,15 @@ function AssetsPage({ user }) {
           <option value="Security">Security</option>
           <option value="Water Hygiene">Water Hygiene</option>
           <option value="Other">Other</option>
+        </select>
+
+        <select value={condition} onChange={(event) => setCondition(event.target.value)}>
+          <option value="">All conditions</option>
+          <option value="Unknown">Unknown</option>
+          <option value="Good">Good</option>
+          <option value="Fair">Fair</option>
+          <option value="Poor">Poor</option>
+          <option value="Critical">Critical</option>
         </select>
 
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -1298,11 +1331,11 @@ function AssetsPage({ user }) {
               >
                 <div>
                   <strong>{asset.asset_name}</strong>
-                  <span>{asset.asset_tag || asset.serial_number || "No tag or serial"}</span>
+                  <span>{asset.asset_reference || asset.asset_tag || asset.serial_number || "No reference"}</span>
                 </div>
                 <div>
-                  <span>{asset.asset_type}</span>
-                  <span>{asset.manufacturer || asset.model || "No manufacturer"}</span>
+                  <span>{asset.asset_category} / {asset.asset_type}</span>
+                  <span>{asset.condition} / {asset.ownership_type}</span>
                 </div>
                 <div>
                   <span>{asset.building_name || "No building"}</span>
@@ -1312,7 +1345,7 @@ function AssetsPage({ user }) {
                   <span className={`status-badge ${statusClassName(asset.status)}`}>
                     {asset.status}
                   </span>
-                  <span>{asset.next_service_date ? `Next: ${formatDateForDisplay(asset.next_service_date)}` : "No date"}</span>
+                  <span>{asset.warranty_expiry ? `Warranty: ${formatDateForDisplay(asset.warranty_expiry)}` : asset.next_service_date ? `Next: ${formatDateForDisplay(asset.next_service_date)}` : "No date"}</span>
                 </div>
               </button>
             ))}
@@ -1355,8 +1388,29 @@ function AssetsPage({ user }) {
                 </select>
               </label>
 
+              <Field
+                label="Asset reference"
+                value={form.asset_reference}
+                onChange={(value) => updateField("asset_reference", value)}
+                required={Boolean(editingAsset)}
+                placeholder={editingAsset ? "" : "Auto-generated if blank"}
+              />
               <Field label="Asset name" value={form.asset_name} onChange={(value) => updateField("asset_name", value)} required />
               <Field label="Asset tag" value={form.asset_tag} onChange={(value) => updateField("asset_tag", value)} />
+
+              <label>
+                Category
+                <select value={form.asset_category} onChange={(event) => updateField("asset_category", event.target.value)}>
+                  <option>General</option>
+                  <option>Compliance</option>
+                  <option>Plant</option>
+                  <option>Safety</option>
+                  <option>Security</option>
+                  <option>Fabric</option>
+                  <option>IT</option>
+                  <option>Other</option>
+                </select>
+              </label>
 
               <label>
                 Asset type
@@ -1382,6 +1436,28 @@ function AssetsPage({ user }) {
                 </select>
               </label>
 
+              <label>
+                Condition
+                <select value={form.condition} onChange={(event) => updateField("condition", event.target.value)}>
+                  <option>Unknown</option>
+                  <option>Good</option>
+                  <option>Fair</option>
+                  <option>Poor</option>
+                  <option>Critical</option>
+                </select>
+              </label>
+
+              <label>
+                Ownership
+                <select value={form.ownership_type} onChange={(event) => updateField("ownership_type", event.target.value)}>
+                  <option>Customer Owned</option>
+                  <option>Company Owned</option>
+                  <option>Leased</option>
+                  <option>Managed Only</option>
+                  <option>Unknown</option>
+                </select>
+              </label>
+
               <Field label="Manufacturer" value={form.manufacturer} onChange={(value) => updateField("manufacturer", value)} />
               <Field label="Model" value={form.model} onChange={(value) => updateField("model", value)} />
               <Field label="Serial number" value={form.serial_number} onChange={(value) => updateField("serial_number", value)} />
@@ -1389,6 +1465,9 @@ function AssetsPage({ user }) {
               <Field label="Install date" value={form.install_date} onChange={(value) => updateField("install_date", value)} type="date" />
               <Field label="Last service date" value={form.last_service_date} onChange={(value) => updateField("last_service_date", value)} type="date" />
               <Field label="Next service date" value={form.next_service_date} onChange={(value) => updateField("next_service_date", value)} type="date" />
+              <Field label="Warranty provider" value={form.warranty_provider} onChange={(value) => updateField("warranty_provider", value)} />
+              <Field label="Warranty reference" value={form.warranty_reference} onChange={(value) => updateField("warranty_reference", value)} />
+              <Field label="Warranty expiry" value={form.warranty_expiry} onChange={(value) => updateField("warranty_expiry", value)} type="date" />
 
               <label className="wide-field">
                 Notes
@@ -1433,7 +1512,7 @@ function formatDateForDisplay(value) {
   return String(value).slice(0, 10);
 }
 
-function Field({ label, value, onChange, required, type = "text" }) {
+function Field({ label, value, onChange, required, type = "text", placeholder = "" }) {
   return (
     <label>
       {label}
@@ -1442,6 +1521,7 @@ function Field({ label, value, onChange, required, type = "text" }) {
         value={value || ""}
         onChange={(event) => onChange(event.target.value)}
         required={required}
+        placeholder={placeholder}
       />
     </label>
   );

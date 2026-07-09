@@ -131,8 +131,16 @@ export async function listAssets(params = {}) {
     query.set("status", params.status);
   }
 
+  if (params.asset_category) {
+    query.set("asset_category", params.asset_category);
+  }
+
   if (params.asset_type) {
     query.set("asset_type", params.asset_type);
+  }
+
+  if (params.condition) {
+    query.set("condition", params.condition);
   }
 
   if (params.customer_id) {
