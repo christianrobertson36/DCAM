@@ -7,11 +7,12 @@ router.get("/health", (req, res) => {
     ok: true,
     app: "DCAM API",
     name: "Digital Compliance & Asset Management",
-    version: "v7",
+    version: "v11",
     status: "healthy",
     auth: "login-roles-permissions-foundation",
     crm: "customers-foundation",
     buildings: "buildings-sites-foundation",
+    assets: "asset-register-foundation",
     audit: "audit-events-foundation",
     modules: [
       "CRM",

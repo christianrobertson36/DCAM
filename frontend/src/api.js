@@ -1,7 +1,15 @@
-﻿const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5055";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5055";
+
+function getStoredToken() {
+  try {
+    return window.localStorage.getItem("dcam_token");
+  } catch (err) {
+    return null;
+  }
+}
 
 export async function apiRequest(path, options = {}) {
-  const token = localStorage.getItem("dcam_token");
+  const token = getStoredToken();
 
   const headers = {
     "Content-Type": "application/json",
@@ -103,6 +111,51 @@ export async function createBuilding(payload) {
 
 export async function updateBuilding(id, payload) {
   return apiRequest(`/api/buildings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getAssetSummary() {
+  return apiRequest("/api/assets/summary");
+}
+
+export async function listAssets(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.search) {
+    query.set("search", params.search);
+  }
+
+  if (params.status) {
+    query.set("status", params.status);
+  }
+
+  if (params.asset_type) {
+    query.set("asset_type", params.asset_type);
+  }
+
+  if (params.customer_id) {
+    query.set("customer_id", params.customer_id);
+  }
+
+  if (params.building_id) {
+    query.set("building_id", params.building_id);
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/assets${suffix}`);
+}
+
+export async function createAsset(payload) {
+  return apiRequest("/api/assets", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateAsset(id, payload) {
+  return apiRequest(`/api/assets/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
   });

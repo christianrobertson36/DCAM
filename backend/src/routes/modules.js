@@ -16,7 +16,6 @@ const notImplemented = (moduleName) => (req, res) => {
 };
 
 router.get("/contacts", requirePermission(PERMISSIONS.CUSTOMERS_VIEW), notImplemented("Contacts"));
-router.get("/assets", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Assets"));
 router.get("/work-orders", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Work Orders"));
 router.get("/reports", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Reports"));
 router.get("/certificates", requirePermission(PERMISSIONS.BUILDINGS_VIEW), notImplemented("Certificates"));

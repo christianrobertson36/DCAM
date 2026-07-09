@@ -12,14 +12,18 @@ import {
   X
 } from "lucide-react";
 import {
+  createAsset,
   createBuilding,
   createCustomer,
+  getAssetSummary,
   getBuildingSummary,
   getCustomerSummary,
   getMe,
+  listAssets,
   listBuildings,
   listCustomers,
   login,
+  updateAsset,
   updateBuilding,
   updateCustomer
 } from "./api";
@@ -56,13 +60,17 @@ const PERMISSIONS = {
   CUSTOMERS_EDIT: "customers:edit",
   BUILDINGS_VIEW: "buildings:view",
   BUILDINGS_CREATE: "buildings:create",
-  BUILDINGS_EDIT: "buildings:edit"
+  BUILDINGS_EDIT: "buildings:edit",
+  ASSETS_VIEW: "assets:view",
+  ASSETS_CREATE: "assets:create",
+  ASSETS_EDIT: "assets:edit"
 };
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
   { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
-  { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW }
+  { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
+  { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW }
 ];
 
 const emptyCustomer = {
@@ -101,6 +109,22 @@ const emptyBuilding = {
   site_contact_name: "",
   site_contact_email: "",
   site_contact_phone: ""
+};
+
+const emptyAsset = {
+  building_id: "",
+  asset_name: "",
+  asset_tag: "",
+  asset_type: "General",
+  status: "Active",
+  manufacturer: "",
+  model: "",
+  serial_number: "",
+  location_description: "",
+  install_date: "",
+  last_service_date: "",
+  next_service_date: "",
+  notes: ""
 };
 
 function hasPermission(user, permission) {
@@ -268,7 +292,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets"
     ? activePage
     : "DCAM Operating System";
 
@@ -323,7 +347,8 @@ function AdminShell({ user, onLogout }) {
 
         {activePage === "Customers" ? <CustomersPage user={user} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" ? <DashboardPage /> : null}
+        {activePage === "Assets" ? <AssetsPage user={user} /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -1017,11 +1042,403 @@ function BuildingsPage({ user }) {
   );
 }
 
-function Field({ label, value, onChange, required }) {
+function AssetsPage({ user }) {
+  const [assets, setAssets] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    service_due: 0,
+    out_of_service: 0,
+    retired: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [assetType, setAssetType] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [buildingId, setBuildingId] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState(null);
+  const [form, setForm] = useState(emptyAsset);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewBuildings = hasPermission(user, PERMISSIONS.BUILDINGS_VIEW);
+  const canCreateAsset = hasPermission(user, PERMISSIONS.ASSETS_CREATE);
+  const canEditAsset = hasPermission(user, PERMISSIONS.ASSETS_EDIT);
+
+  async function loadAssets() {
+    const summaryRequest = getAssetSummary();
+    const assetsRequest = listAssets({
+      search,
+      status,
+      asset_type: assetType,
+      customer_id: canViewCustomers ? customerId : "",
+      building_id: canViewBuildings ? buildingId : ""
+    });
+    const customersRequest = canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] });
+    const buildingsRequest = canViewBuildings
+      ? listBuildings({ customer_id: canViewCustomers ? customerId : "" })
+      : Promise.resolve({ buildings: [] });
+
+    const [summaryData, assetsData, customersData, buildingsData] = await Promise.all([
+      summaryRequest,
+      assetsRequest,
+      customersRequest,
+      buildingsRequest
+    ]);
+
+    setSummary(summaryData.summary);
+    setAssets(assetsData.assets);
+    setCustomers(customersData.customers);
+    setBuildings(buildingsData.buildings);
+  }
+
+  useEffect(() => {
+    loadAssets().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadAssets();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingAsset(null);
+    setForm({
+      ...emptyAsset,
+      building_id: buildingId || buildings[0]?.id || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(asset) {
+    setEditingAsset(asset);
+    setForm({
+      ...emptyAsset,
+      ...asset,
+      building_id: asset.building_id || "",
+      install_date: formatDateForInput(asset.install_date),
+      last_service_date: formatDateForInput(asset.last_service_date),
+      next_service_date: formatDateForInput(asset.next_service_date)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingAsset(null);
+    setForm(emptyAsset);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveAsset(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        building_id: Number(form.building_id)
+      };
+
+      if (editingAsset) {
+        await updateAsset(editingAsset.id, payload);
+      } else {
+        await createAsset(payload);
+      }
+
+      closeForm();
+      await loadAssets();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = useMemo(
+    () => [
+      { label: "Total Assets", value: summary.total || 0 },
+      { label: "Active", value: summary.active || 0 },
+      { label: "Service Due", value: summary.service_due || 0 },
+      { label: "Out of Service", value: summary.out_of_service || 0 },
+      { label: "Retired", value: summary.retired || 0 }
+    ],
+    [summary]
+  );
+
+  return (
+    <div className="assets-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Asset Register</p>
+          <h2>Building assets and service items</h2>
+          <p>
+            Track assets by customer building, tag, status, service dates and location notes.
+          </p>
+        </div>
+
+        {canCreateAsset ? (
+          <button className="primary-action" onClick={openCreateForm} disabled={!buildings.length}>
+            <Plus size={18} />
+            Add Asset
+          </button>
+        ) : null}
+      </section>
+
+      {canCreateAsset && !buildings.length ? (
+        <div className="login-error">
+          Add a building first before creating assets.
+        </div>
+      ) : null}
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search assets, tags, serials, buildings or customers..."
+          />
+        </div>
+
+        {canViewCustomers ? (
+          <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+            <option value="">All customers</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.company_name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+
+        {canViewBuildings ? (
+          <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)}>
+            <option value="">All buildings</option>
+            {buildings.map((building) => (
+              <option key={building.id} value={building.id}>
+                {building.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+
+        <select value={assetType} onChange={(event) => setAssetType(event.target.value)}>
+          <option value="">All types</option>
+          <option value="General">General</option>
+          <option value="Fire Safety">Fire Safety</option>
+          <option value="Electrical">Electrical</option>
+          <option value="Mechanical">Mechanical</option>
+          <option value="HVAC">HVAC</option>
+          <option value="Security">Security</option>
+          <option value="Water Hygiene">Water Hygiene</option>
+          <option value="Other">Other</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Service Due">Service Due</option>
+          <option value="Out of Service">Out of Service</option>
+          <option value="Retired">Retired</option>
+        </select>
+
+        <button className="secondary-button" type="submit">
+          Search
+        </button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Assets</strong>
+          <span>{assets.length} shown</span>
+        </div>
+
+        {assets.length ? (
+          <div className="customer-list">
+            {assets.map((asset) => (
+              <button
+                className="customer-row asset-row"
+                key={asset.id}
+                onClick={() => {
+                  if (canEditAsset) {
+                    openEditForm(asset);
+                  }
+                }}
+                disabled={!canEditAsset}
+              >
+                <div>
+                  <strong>{asset.asset_name}</strong>
+                  <span>{asset.asset_tag || asset.serial_number || "No tag or serial"}</span>
+                </div>
+                <div>
+                  <span>{asset.asset_type}</span>
+                  <span>{asset.manufacturer || asset.model || "No manufacturer"}</span>
+                </div>
+                <div>
+                  <span>{asset.building_name || "No building"}</span>
+                  <span>{asset.customer_name || "No customer"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(asset.status)}`}>
+                    {asset.status}
+                  </span>
+                  <span>{asset.next_service_date ? `Next: ${formatDateForDisplay(asset.next_service_date)}` : "No date"}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">
+            No assets yet. Add assets against a building to start the register.
+          </div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveAsset}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingAsset ? "Edit Asset" : "New Asset"}</p>
+                <h2>{editingAsset ? editingAsset.asset_name : "Add asset"}</h2>
+              </div>
+
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Building
+                <select
+                  value={form.building_id}
+                  onChange={(event) => updateField("building_id", event.target.value)}
+                  required
+                >
+                  <option value="">Select building</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name} - {building.customer_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <Field label="Asset name" value={form.asset_name} onChange={(value) => updateField("asset_name", value)} required />
+              <Field label="Asset tag" value={form.asset_tag} onChange={(value) => updateField("asset_tag", value)} />
+
+              <label>
+                Asset type
+                <select value={form.asset_type} onChange={(event) => updateField("asset_type", event.target.value)}>
+                  <option>General</option>
+                  <option>Fire Safety</option>
+                  <option>Electrical</option>
+                  <option>Mechanical</option>
+                  <option>HVAC</option>
+                  <option>Security</option>
+                  <option>Water Hygiene</option>
+                  <option>Other</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Active</option>
+                  <option>Service Due</option>
+                  <option>Out of Service</option>
+                  <option>Retired</option>
+                </select>
+              </label>
+
+              <Field label="Manufacturer" value={form.manufacturer} onChange={(value) => updateField("manufacturer", value)} />
+              <Field label="Model" value={form.model} onChange={(value) => updateField("model", value)} />
+              <Field label="Serial number" value={form.serial_number} onChange={(value) => updateField("serial_number", value)} />
+              <Field label="Location" value={form.location_description} onChange={(value) => updateField("location_description", value)} />
+              <Field label="Install date" value={form.install_date} onChange={(value) => updateField("install_date", value)} type="date" />
+              <Field label="Last service date" value={form.last_service_date} onChange={(value) => updateField("last_service_date", value)} type="date" />
+              <Field label="Next service date" value={form.next_service_date} onChange={(value) => updateField("next_service_date", value)} type="date" />
+
+              <label className="wide-field">
+                Notes
+                <textarea
+                  value={form.notes || ""}
+                  onChange={(event) => updateField("notes", event.target.value)}
+                  rows={3}
+                  placeholder="Asset condition, known issues, warranty, compliance notes..."
+                />
+              </label>
+            </div>
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>
+                Cancel
+              </button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Asset"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function formatDateForInput(value) {
+  if (!value) {
+    return "";
+  }
+
+  return String(value).slice(0, 10);
+}
+
+function formatDateForDisplay(value) {
+  if (!value) {
+    return "";
+  }
+
+  return String(value).slice(0, 10);
+}
+
+function Field({ label, value, onChange, required, type = "text" }) {
   return (
     <label>
       {label}
       <input
+        type={type}
         value={value || ""}
         onChange={(event) => onChange(event.target.value)}
         required={required}

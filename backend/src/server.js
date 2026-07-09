@@ -8,6 +8,7 @@ const healthRoutes = require("./routes/health");
 const authRoutes = require("./routes/auth");
 const customersRoutes = require("./routes/customers");
 const buildingsRoutes = require("./routes/buildings");
+const assetsRoutes = require("./routes/assets");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -22,6 +23,7 @@ app.use("/", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/customers", customersRoutes);
 app.use("/api/buildings", buildingsRoutes);
+app.use("/api/assets", assetsRoutes);
 app.use("/api", moduleRoutes);
 
 app.use((req, res) => {
