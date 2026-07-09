@@ -213,3 +213,32 @@ export async function deleteAssetFile(assetId, fileId) {
     method: "DELETE"
   });
 }
+
+export async function listAssetOptions(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.include_inactive) {
+    query.set("include_inactive", "true");
+  }
+
+  if (params.option_type) {
+    query.set("option_type", params.option_type);
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/asset-options${suffix}`);
+}
+
+export async function createAssetOption(payload) {
+  return apiRequest("/api/asset-options", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateAssetOption(id, payload) {
+  return apiRequest(`/api/asset-options/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}

@@ -735,6 +735,54 @@ h1 {
   color: #991b1b;
 }
 
+.settings-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.secondary-button.active-tab {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.option-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) 130px auto;
+  margin: 14px 0;
+}
+
+.option-list {
+  display: grid;
+  gap: 10px;
+}
+
+.option-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) 120px 110px;
+  padding: 12px;
+}
+
+.inline-toggle {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  font-weight: 800;
+}
+
 @media (max-width: 900px) {
   .page-intro,
   .form-header,
@@ -747,7 +795,9 @@ h1 {
   .filter-bar,
   .customer-row,
   .form-grid,
-  .asset-upload-grid {
+  .asset-upload-grid,
+  .option-form,
+  .option-row {
     grid-template-columns: 1fr;
   }
 

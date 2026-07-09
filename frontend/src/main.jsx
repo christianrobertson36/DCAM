@@ -10,11 +10,13 @@ import {
   Plus,
   Search,
   Save,
+  SlidersHorizontal,
   Trash2,
   X
 } from "lucide-react";
 import {
   createAsset,
+  createAssetOption,
   createBuilding,
   createCustomer,
   deleteAssetFile,
@@ -24,11 +26,13 @@ import {
   getCustomerSummary,
   getMe,
   listAssetFiles,
+  listAssetOptions,
   listAssets,
   listBuildings,
   listCustomers,
   login,
   updateAsset,
+  updateAssetOption,
   uploadAssetFile,
   updateBuilding,
   updateCustomer
@@ -69,14 +73,16 @@ const PERMISSIONS = {
   BUILDINGS_EDIT: "buildings:edit",
   ASSETS_VIEW: "assets:view",
   ASSETS_CREATE: "assets:create",
-  ASSETS_EDIT: "assets:edit"
+  ASSETS_EDIT: "assets:edit",
+  ASSETS_ADMIN: "assets:admin"
 };
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
   { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
   { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
-  { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW }
+  { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
+  { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN }
 ];
 
 const emptyCustomer = {
@@ -139,6 +145,22 @@ const emptyAsset = {
   warranty_expiry: "",
   notes: ""
 };
+
+const fallbackAssetOptions = {
+  category: ["General", "Compliance", "Plant", "Safety", "Security", "Fabric", "IT", "Other"],
+  type: ["General", "Fire Safety", "Electrical", "Mechanical", "HVAC", "Security", "Water Hygiene", "Other"],
+  status: ["Active", "Service Due", "Out of Service", "Retired"],
+  condition: ["Unknown", "Good", "Fair", "Poor", "Critical"],
+  ownership: ["Customer Owned", "Company Owned", "Leased", "Managed Only", "Unknown"]
+};
+
+const assetOptionTypes = [
+  { value: "category", label: "Categories" },
+  { value: "type", label: "Types" },
+  { value: "status", label: "Statuses" },
+  { value: "condition", label: "Conditions" },
+  { value: "ownership", label: "Ownership" }
+];
 
 function hasPermission(user, permission) {
   return Array.isArray(user?.permissions) && user.permissions.includes(permission);
@@ -305,7 +327,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Asset Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -361,7 +383,8 @@ function AdminShell({ user, onLogout }) {
         {activePage === "Customers" ? <CustomersPage user={user} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" ? <DashboardPage /> : null}
+        {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -1077,6 +1100,7 @@ function AssetsPage({ user }) {
   const [editingAsset, setEditingAsset] = useState(null);
   const [form, setForm] = useState(emptyAsset);
   const [assetFiles, setAssetFiles] = useState([]);
+  const [assetOptions, setAssetOptions] = useState(fallbackAssetOptions);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileKind, setFileKind] = useState("document");
   const [fileNotes, setFileNotes] = useState("");
@@ -1103,18 +1127,21 @@ function AssetsPage({ user }) {
     const buildingsRequest = canViewBuildings
       ? listBuildings({ customer_id: canViewCustomers ? customerId : "" })
       : Promise.resolve({ buildings: [] });
+    const optionsRequest = listAssetOptions().catch(() => ({ grouped: {} }));
 
-    const [summaryData, assetsData, customersData, buildingsData] = await Promise.all([
+    const [summaryData, assetsData, customersData, buildingsData, optionsData] = await Promise.all([
       summaryRequest,
       assetsRequest,
       customersRequest,
-      buildingsRequest
+      buildingsRequest,
+      optionsRequest
     ]);
 
     setSummary(summaryData.summary);
     setAssets(assetsData.assets);
     setCustomers(customersData.customers);
     setBuildings(buildingsData.buildings);
+    setAssetOptions(mergeAssetOptions(optionsData.grouped || {}));
   }
 
   useEffect(() => {
@@ -1357,43 +1384,30 @@ function AssetsPage({ user }) {
 
         <select value={assetCategory} onChange={(event) => setAssetCategory(event.target.value)}>
           <option value="">All categories</option>
-          <option value="General">General</option>
-          <option value="Compliance">Compliance</option>
-          <option value="Plant">Plant</option>
-          <option value="Safety">Safety</option>
-          <option value="Security">Security</option>
-          <option value="Fabric">Fabric</option>
-          <option value="IT">IT</option>
-          <option value="Other">Other</option>
+          {assetOptions.category.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
 
         <select value={assetType} onChange={(event) => setAssetType(event.target.value)}>
           <option value="">All types</option>
-          <option value="General">General</option>
-          <option value="Fire Safety">Fire Safety</option>
-          <option value="Electrical">Electrical</option>
-          <option value="Mechanical">Mechanical</option>
-          <option value="HVAC">HVAC</option>
-          <option value="Security">Security</option>
-          <option value="Water Hygiene">Water Hygiene</option>
-          <option value="Other">Other</option>
+          {assetOptions.type.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
 
         <select value={condition} onChange={(event) => setCondition(event.target.value)}>
           <option value="">All conditions</option>
-          <option value="Unknown">Unknown</option>
-          <option value="Good">Good</option>
-          <option value="Fair">Fair</option>
-          <option value="Poor">Poor</option>
-          <option value="Critical">Critical</option>
+          {assetOptions.condition.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
 
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">All statuses</option>
-          <option value="Active">Active</option>
-          <option value="Service Due">Service Due</option>
-          <option value="Out of Service">Out of Service</option>
-          <option value="Retired">Retired</option>
+          {assetOptions.status.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
 
         <button className="secondary-button" type="submit">
@@ -1494,60 +1508,45 @@ function AssetsPage({ user }) {
               <label>
                 Category
                 <select value={form.asset_category} onChange={(event) => updateField("asset_category", event.target.value)}>
-                  <option>General</option>
-                  <option>Compliance</option>
-                  <option>Plant</option>
-                  <option>Safety</option>
-                  <option>Security</option>
-                  <option>Fabric</option>
-                  <option>IT</option>
-                  <option>Other</option>
+                  {assetOptions.category.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
                 </select>
               </label>
 
               <label>
                 Asset type
                 <select value={form.asset_type} onChange={(event) => updateField("asset_type", event.target.value)}>
-                  <option>General</option>
-                  <option>Fire Safety</option>
-                  <option>Electrical</option>
-                  <option>Mechanical</option>
-                  <option>HVAC</option>
-                  <option>Security</option>
-                  <option>Water Hygiene</option>
-                  <option>Other</option>
+                  {assetOptions.type.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
                 </select>
               </label>
 
               <label>
                 Status
                 <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
-                  <option>Active</option>
-                  <option>Service Due</option>
-                  <option>Out of Service</option>
-                  <option>Retired</option>
+                  {assetOptions.status.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
                 </select>
               </label>
 
               <label>
                 Condition
                 <select value={form.condition} onChange={(event) => updateField("condition", event.target.value)}>
-                  <option>Unknown</option>
-                  <option>Good</option>
-                  <option>Fair</option>
-                  <option>Poor</option>
-                  <option>Critical</option>
+                  {assetOptions.condition.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
                 </select>
               </label>
 
               <label>
                 Ownership
                 <select value={form.ownership_type} onChange={(event) => updateField("ownership_type", event.target.value)}>
-                  <option>Customer Owned</option>
-                  <option>Company Owned</option>
-                  <option>Leased</option>
-                  <option>Managed Only</option>
-                  <option>Unknown</option>
+                  {assetOptions.ownership.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
                 </select>
               </label>
 
@@ -1663,6 +1662,168 @@ function AssetsPage({ user }) {
       ) : null}
     </div>
   );
+}
+
+function AssetSettingsPage() {
+  const [selectedType, setSelectedType] = useState("category");
+  const [groupedOptions, setGroupedOptions] = useState({});
+  const [form, setForm] = useState({
+    label: "",
+    sort_order: 100
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadOptions() {
+    const data = await listAssetOptions({ include_inactive: true });
+    setGroupedOptions(data.grouped || {});
+  }
+
+  useEffect(() => {
+    loadOptions().catch((err) => setError(err.message));
+  }, []);
+
+  async function createOption(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      await createAssetOption({
+        option_type: selectedType,
+        label: form.label,
+        sort_order: Number(form.sort_order),
+        is_active: true
+      });
+      setForm({ label: "", sort_order: 100 });
+      await loadOptions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveOption(option, changes) {
+    setBusy(true);
+    setError("");
+
+    try {
+      await updateAssetOption(option.id, {
+        label: changes.label ?? option.label,
+        sort_order: Number(changes.sort_order ?? option.sort_order),
+        is_active: changes.is_active ?? option.is_active
+      });
+      await loadOptions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const visibleOptions = groupedOptions[selectedType] || [];
+  const selectedTypeLabel = assetOptionTypes.find((type) => type.value === selectedType)?.label || "Options";
+
+  return (
+    <div className="asset-settings-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Asset Administration</p>
+          <h2>Asset categories, types, statuses and conditions</h2>
+          <p>
+            Manage the option lists used by the Asset Register.
+          </p>
+        </div>
+      </section>
+
+      <section className="settings-layout">
+        <div className="settings-tabs">
+          {assetOptionTypes.map((type) => (
+            <button
+              className={`secondary-button ${selectedType === type.value ? "active-tab" : ""}`}
+              key={type.value}
+              onClick={() => setSelectedType(type.value)}
+              type="button"
+            >
+              {type.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <strong>{selectedTypeLabel}</strong>
+            <span>{visibleOptions.length} options</span>
+          </div>
+
+          <form className="option-form" onSubmit={createOption}>
+            <Field label="New option" value={form.label} onChange={(value) => setForm((current) => ({ ...current, label: value }))} required />
+            <Field label="Sort order" value={form.sort_order} onChange={(value) => setForm((current) => ({ ...current, sort_order: value }))} type="number" />
+            <button className="primary-action" type="submit" disabled={busy}>
+              <Plus size={18} />
+              Add Option
+            </button>
+          </form>
+
+          {error ? <div className="login-error">{error}</div> : null}
+
+          <div className="option-list">
+            {visibleOptions.map((option) => (
+              <div className="option-row" key={option.id}>
+                <input
+                  defaultValue={option.label}
+                  onBlur={(event) => {
+                    if (event.target.value !== option.label) {
+                      saveOption(option, { label: event.target.value });
+                    }
+                  }}
+                  disabled={busy}
+                />
+                <input
+                  type="number"
+                  defaultValue={option.sort_order}
+                  onBlur={(event) => {
+                    if (Number(event.target.value) !== Number(option.sort_order)) {
+                      saveOption(option, { sort_order: event.target.value });
+                    }
+                  }}
+                  disabled={busy}
+                />
+                <label className="inline-toggle">
+                  <input
+                    checked={option.is_active}
+                    onChange={(event) => saveOption(option, { is_active: event.target.checked })}
+                    type="checkbox"
+                    disabled={busy}
+                  />
+                  Active
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function mergeAssetOptions(grouped) {
+  const merged = { ...fallbackAssetOptions };
+
+  Object.keys(fallbackAssetOptions).forEach((key) => {
+    const options = Array.isArray(grouped[key]) ? grouped[key] : [];
+    const labels = options
+      .filter((option) => option.is_active !== false)
+      .map((option) => option.label)
+      .filter(Boolean);
+
+    if (labels.length) {
+      merged[key] = labels;
+    }
+  });
+
+  return merged;
 }
 
 function formatDateForInput(value) {
