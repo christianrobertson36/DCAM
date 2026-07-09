@@ -6,6 +6,7 @@ const helmet = require("helmet");
 
 const healthRoutes = require("./routes/health");
 const authRoutes = require("./routes/auth");
+const customersRoutes = require("./routes/customers");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(express.json({ limit: "10mb" }));
 
 app.use("/", healthRoutes);
 app.use("/auth", authRoutes);
+app.use("/api/customers", customersRoutes);
 app.use("/api", moduleRoutes);
 
 app.use((req, res) => {

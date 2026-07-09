@@ -37,3 +37,36 @@ export async function login(email, password) {
 export async function getMe() {
   return apiRequest("/auth/me");
 }
+
+export async function getCustomerSummary() {
+  return apiRequest("/api/customers/summary");
+}
+
+export async function listCustomers(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.search) {
+    query.set("search", params.search);
+  }
+
+  if (params.status) {
+    query.set("status", params.status);
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/customers${suffix}`);
+}
+
+export async function createCustomer(payload) {
+  return apiRequest("/api/customers", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateCustomer(id, payload) {
+  return apiRequest(`/api/customers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
