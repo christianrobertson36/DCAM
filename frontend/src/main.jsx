@@ -83,6 +83,10 @@ function hasPermission(user, permission) {
   return Array.isArray(user?.permissions) && user.permissions.includes(permission);
 }
 
+function statusClassName(status) {
+  return String(status || "").toLowerCase().split(" ").join("-");
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -521,7 +525,7 @@ function CustomersPage({ user }) {
                   <span>{customer.postcode || "No postcode"}</span>
                 </div>
                 <div>
-                  <span className={`status-badge ${customer.status.toLowerCase().replaceAll(" ", "-")}`}>
+                  <span className={`status-badge ${statusClassName(customer.status)}`}>
                     {customer.status}
                   </span>
                 </div>
@@ -841,7 +845,7 @@ function BuildingsPage({ user }) {
                   <span>{building.postcode || "No postcode"}</span>
                 </div>
                 <div>
-                  <span className={`status-badge ${building.status.toLowerCase().replaceAll(" ", "-")}`}>
+                  <span className={`status-badge ${statusClassName(building.status)}`}>
                     {building.status}
                   </span>
                 </div>
