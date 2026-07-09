@@ -14,13 +14,13 @@ env:
   REGISTRY: ghcr.io
   API_IMAGE: ghcr.io/christianrobertson36/dcam-api
   WEB_IMAGE: ghcr.io/christianrobertson36/dcam-web
-  API_TAG: v6
-  WEB_TAG: v6
+  API_TAG: v7
+  WEB_TAG: v7
   PUBLIC_API_URL: http://192.168.1.177:5056
 
 jobs:
   build-api:
-    name: Build API v6
+    name: Build API v7
     runs-on: ubuntu-latest
 
     steps:
@@ -46,7 +46,7 @@ jobs:
           tags: ${{ env.API_IMAGE }}:${{ env.API_TAG }}
 
   build-web:
-    name: Build Web v6
+    name: Build Web v7
     runs-on: ubuntu-latest
 
     steps:
