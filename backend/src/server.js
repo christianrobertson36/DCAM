@@ -10,6 +10,7 @@ const customersRoutes = require("./routes/customers");
 const buildingsRoutes = require("./routes/buildings");
 const assetsRoutes = require("./routes/assets");
 const assetOptionsRoutes = require("./routes/assetOptions");
+const workOrdersRoutes = require("./routes/workOrders");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -26,6 +27,7 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/buildings", buildingsRoutes);
 app.use("/api/assets", assetsRoutes);
 app.use("/api/asset-options", assetOptionsRoutes);
+app.use("/api/work-orders", workOrdersRoutes);
 app.use("/api", moduleRoutes);
 
 app.use((req, res) => {

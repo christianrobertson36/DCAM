@@ -20,24 +20,28 @@ import {
   createAssetOption,
   createBuilding,
   createCustomer,
+  createWorkOrder,
   deleteAssetFile,
   downloadAssetFile,
   getAssetSummary,
   getBuildingSummary,
   getCustomerSummary,
   getMe,
+  getWorkOrderSummary,
   listAssetFiles,
   listAssetHistory,
   listAssetOptions,
   listAssets,
   listBuildings,
   listCustomers,
+  listWorkOrders,
   login,
   updateAsset,
   updateAssetOption,
   uploadAssetFile,
   updateBuilding,
-  updateCustomer
+  updateCustomer,
+  updateWorkOrder
 } from "./api";
 import "./styles/main.css";
 
@@ -76,7 +80,11 @@ const PERMISSIONS = {
   ASSETS_VIEW: "assets:view",
   ASSETS_CREATE: "assets:create",
   ASSETS_EDIT: "assets:edit",
-  ASSETS_ADMIN: "assets:admin"
+  ASSETS_ADMIN: "assets:admin",
+  WORK_ORDERS_VIEW: "work_orders:view",
+  WORK_ORDERS_CREATE: "work_orders:create",
+  WORK_ORDERS_EDIT: "work_orders:edit",
+  WORK_ORDERS_ASSIGN: "work_orders:assign"
 };
 
 const navItems = [
@@ -84,6 +92,7 @@ const navItems = [
   { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
   { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
+  { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN }
 ];
 
@@ -163,6 +172,21 @@ const assetOptionTypes = [
   { value: "condition", label: "Conditions" },
   { value: "ownership", label: "Ownership" }
 ];
+
+const emptyWorkOrder = {
+  work_order_reference: "",
+  work_order_type: "Reactive",
+  title: "",
+  description: "",
+  priority: "Normal",
+  status: "Open",
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  assigned_user_id: "",
+  due_date: "",
+  completion_notes: ""
+};
 
 function hasPermission(user, permission) {
   return Array.isArray(user?.permissions) && user.permissions.includes(permission);
@@ -329,7 +353,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Asset Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Asset Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -385,8 +409,9 @@ function AdminShell({ user, onLogout }) {
         {activePage === "Customers" ? <CustomersPage user={user} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
+        {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -1728,6 +1753,347 @@ function AssetsPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Asset"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function WorkOrdersPage({ user }) {
+  const [workOrders, setWorkOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    open: 0,
+    in_progress: 0,
+    on_hold: 0,
+    completed: 0,
+    overdue: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [priority, setPriority] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingWorkOrder, setEditingWorkOrder] = useState(null);
+  const [form, setForm] = useState(emptyWorkOrder);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.WORK_ORDERS_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.WORK_ORDERS_EDIT);
+  const canAssign = hasPermission(user, PERMISSIONS.WORK_ORDERS_ASSIGN);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewBuildings = hasPermission(user, PERMISSIONS.BUILDINGS_VIEW);
+  const canViewAssets = hasPermission(user, PERMISSIONS.ASSETS_VIEW);
+
+  async function loadWorkOrders() {
+    const [summaryData, ordersData, customersData, buildingsData, assetsData] = await Promise.all([
+      getWorkOrderSummary(),
+      listWorkOrders({ search, status, priority }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] }),
+      canViewBuildings ? listBuildings() : Promise.resolve({ buildings: [] }),
+      canViewAssets ? listAssets() : Promise.resolve({ assets: [] })
+    ]);
+
+    setSummary(summaryData.summary);
+    setWorkOrders(ordersData.work_orders || []);
+    setCustomers(customersData.customers || []);
+    setBuildings(buildingsData.buildings || []);
+    setAssets(assetsData.assets || []);
+  }
+
+  useEffect(() => {
+    loadWorkOrders().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadWorkOrders();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingWorkOrder(null);
+    setForm(emptyWorkOrder);
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(workOrder) {
+    setEditingWorkOrder(workOrder);
+    setForm({
+      ...emptyWorkOrder,
+      ...workOrder,
+      customer_id: workOrder.customer_id || "",
+      building_id: workOrder.building_id || "",
+      asset_id: workOrder.asset_id || "",
+      assigned_user_id: workOrder.assigned_user_id || "",
+      due_date: formatDateForInput(workOrder.due_date)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingWorkOrder(null);
+    setForm(emptyWorkOrder);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveWorkOrder(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: form.customer_id ? Number(form.customer_id) : null,
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        assigned_user_id: canAssign
+          ? form.assigned_user_id ? Number(form.assigned_user_id) : null
+          : editingWorkOrder?.assigned_user_id || null
+      };
+
+      if (editingWorkOrder) {
+        await updateWorkOrder(editingWorkOrder.id, payload);
+      } else {
+        await createWorkOrder(payload);
+      }
+
+      closeForm();
+      await loadWorkOrders();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Open", value: summary.open || 0 },
+    { label: "In Progress", value: summary.in_progress || 0 },
+    { label: "On Hold", value: summary.on_hold || 0 },
+    { label: "Completed", value: summary.completed || 0 },
+    { label: "Overdue", value: summary.overdue || 0 }
+  ];
+
+  return (
+    <div className="work-orders-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">CMMS Foundation</p>
+          <h2>Reactive and planned work orders</h2>
+          <p>Track work by customer, building, asset, priority, status and due date.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Work Order
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar work-orders-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search work orders, customers, buildings or assets..."
+          />
+        </div>
+
+        <select value={priority} onChange={(event) => setPriority(event.target.value)}>
+          <option value="">All priorities</option>
+          <option>Low</option>
+          <option>Normal</option>
+          <option>High</option>
+          <option>Urgent</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option>Open</option>
+          <option>In Progress</option>
+          <option>On Hold</option>
+          <option>Completed</option>
+          <option>Cancelled</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Work Orders</strong>
+          <span>{workOrders.length} shown</span>
+        </div>
+
+        {workOrders.length ? (
+          <div className="customer-list">
+            {workOrders.map((workOrder) => (
+              <button
+                className="customer-row work-order-row"
+                disabled={!canEdit}
+                key={workOrder.id}
+                onClick={() => {
+                  if (canEdit) {
+                    openEditForm(workOrder);
+                  }
+                }}
+              >
+                <div>
+                  <strong>{workOrder.title}</strong>
+                  <span>{workOrder.work_order_reference}</span>
+                </div>
+                <div>
+                  <span>{workOrder.priority} / {workOrder.work_order_type}</span>
+                  <span>{workOrder.asset_reference || workOrder.asset_name || "No asset"}</span>
+                </div>
+                <div>
+                  <span>{workOrder.customer_name || "No customer"}</span>
+                  <span>{workOrder.building_name || "No building"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(workOrder.status)}`}>{workOrder.status}</span>
+                  <span>{workOrder.due_date ? `Due: ${formatDateForDisplay(workOrder.due_date)}` : "No due date"}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No work orders yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveWorkOrder}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingWorkOrder ? "Edit Work Order" : "New Work Order"}</p>
+                <h2>{editingWorkOrder ? editingWorkOrder.work_order_reference : "Add work order"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <Field label="Reference" value={form.work_order_reference} onChange={(value) => updateField("work_order_reference", value)} placeholder={editingWorkOrder ? "" : "Auto-generated if blank"} />
+              <Field label="Title" value={form.title} onChange={(value) => updateField("title", value)} required />
+
+              <label>
+                Type
+                <select value={form.work_order_type} onChange={(event) => updateField("work_order_type", event.target.value)}>
+                  <option>Reactive</option>
+                  <option>Planned</option>
+                  <option>Inspection</option>
+                  <option>Repair</option>
+                </select>
+              </label>
+
+              <label>
+                Priority
+                <select value={form.priority} onChange={(event) => updateField("priority", event.target.value)}>
+                  <option>Low</option>
+                  <option>Normal</option>
+                  <option>High</option>
+                  <option>Urgent</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Open</option>
+                  <option>In Progress</option>
+                  <option>On Hold</option>
+                  <option>Completed</option>
+                  <option>Cancelled</option>
+                </select>
+              </label>
+
+              <Field label="Due date" value={form.due_date} onChange={(value) => updateField("due_date", value)} type="date" />
+
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)}>
+                  <option value="">No customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>{customer.company_name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Building
+                <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)}>
+                  <option value="">No building</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>{building.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Asset
+                <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)}>
+                  <option value="">No asset</option>
+                  {assets.map((asset) => (
+                    <option key={asset.id} value={asset.id}>{asset.asset_reference} - {asset.asset_name}</option>
+                  ))}
+                </select>
+              </label>
+
+              {canAssign ? (
+                <Field label="Assigned user ID" value={form.assigned_user_id} onChange={(value) => updateField("assigned_user_id", value)} type="number" />
+              ) : null}
+
+              <label className="wide-field">
+                Description
+                <textarea value={form.description || ""} onChange={(event) => updateField("description", event.target.value)} rows={3} />
+              </label>
+
+              <label className="wide-field">
+                Completion notes
+                <textarea value={form.completion_notes || ""} onChange={(event) => updateField("completion_notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Work Order"}
               </button>
             </div>
           </form>

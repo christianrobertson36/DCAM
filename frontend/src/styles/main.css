@@ -879,6 +879,10 @@ h1 {
   grid-template-columns: minmax(220px, 1.4fr) repeat(6, minmax(130px, 1fr)) auto;
 }
 
+.work-orders-filter {
+  grid-template-columns: 1fr 160px 170px auto;
+}
+
 .status-badge.survey-required {
   background: #ede9fe;
   color: #6d28d9;
@@ -899,6 +903,21 @@ h1 {
   color: #334155;
 }
 
+.status-badge.in-progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-badge.on-hold {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.cancelled {
+  background: #e2e8f0;
+  color: #475569;
+}
+
 .building-row strong::before {
   content: "🏢 ";
 }
@@ -907,9 +926,14 @@ h1 {
   content: "A ";
 }
 
+.work-order-row strong::before {
+  content: "WO ";
+}
+
 @media (max-width: 900px) {
   .buildings-filter,
-  .assets-filter {
+  .assets-filter,
+  .work-orders-filter {
     grid-template-columns: 1fr;
   }
 }

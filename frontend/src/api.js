@@ -250,3 +250,34 @@ export async function updateAssetOption(id, payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function getWorkOrderSummary() {
+  return apiRequest("/api/work-orders/summary");
+}
+
+export async function listWorkOrders(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "priority", "customer_id", "building_id", "asset_id", "assigned_user_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/work-orders${suffix}`);
+}
+
+export async function createWorkOrder(payload) {
+  return apiRequest("/api/work-orders", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateWorkOrder(id, payload) {
+  return apiRequest(`/api/work-orders/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
