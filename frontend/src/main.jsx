@@ -22,6 +22,7 @@ import {
   createAssetOption,
   createBuilding,
   createCustomer,
+  createTechnicianJobSignature,
   createTechnicianJobChecklistItem,
   createStaffProfile,
   createStaffQualification,
@@ -50,6 +51,7 @@ import {
   listStaffUsers,
   listTechnicianJobChecklist,
   listTechnicianJobFiles,
+  listTechnicianJobSignatures,
   listTechnicianJobs,
   listWorkOrders,
   login,
@@ -366,7 +368,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v21 Job Checklist Foundation</p>
+        <p className="eyebrow">v22 Job Sign-Off Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -456,7 +458,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v21 Job Checklist Foundation</p>
+            <p className="eyebrow">v22 Job Sign-Off Foundation</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -2839,6 +2841,13 @@ function TechnicianJobsPage({ user }) {
   const [jobFiles, setJobFiles] = useState([]);
   const [checklist, setChecklist] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [signatures, setSignatures] = useState([]);
+  const [signatureForm, setSignatureForm] = useState({
+    signer_name: "",
+    signer_role: "",
+    signature_text: "",
+    notes: ""
+  });
   const [evidenceForm, setEvidenceForm] = useState({
     file_kind: "photo",
     file: null,
@@ -2884,6 +2893,11 @@ function TechnicianJobsPage({ user }) {
     setChecklist(data.checklist || []);
   }
 
+  async function loadJobSignatures(jobId) {
+    const data = await listTechnicianJobSignatures(jobId);
+    setSignatures(data.signatures || []);
+  }
+
   function openUpdateForm(job) {
     setEditingJob(job);
     setForm({
@@ -2898,11 +2912,19 @@ function TechnicianJobsPage({ user }) {
     setJobFiles([]);
     setChecklist([]);
     setNewChecklistItem("");
+    setSignatures([]);
+    setSignatureForm({
+      signer_name: "",
+      signer_role: "",
+      signature_text: "",
+      notes: ""
+    });
     setFormOpen(true);
     setError("");
     Promise.all([
       loadJobFiles(job.id),
-      loadJobChecklist(job.id)
+      loadJobChecklist(job.id),
+      loadJobSignatures(job.id)
     ]).catch((err) => setError(err.message));
   }
 
@@ -2921,6 +2943,13 @@ function TechnicianJobsPage({ user }) {
     setJobFiles([]);
     setChecklist([]);
     setNewChecklistItem("");
+    setSignatures([]);
+    setSignatureForm({
+      signer_name: "",
+      signer_role: "",
+      signature_text: "",
+      notes: ""
+    });
   }
 
   async function saveJob(event) {
@@ -3004,6 +3033,30 @@ function TechnicianJobsPage({ user }) {
         is_completed: !item.is_completed
       });
       await loadJobChecklist(editingJob.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveSignature() {
+    if (!editingJob || !signatureForm.signer_name.trim() || !signatureForm.signature_text.trim()) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await createTechnicianJobSignature(editingJob.id, signatureForm);
+      setSignatureForm({
+        signer_name: "",
+        signer_role: "",
+        signature_text: "",
+        notes: ""
+      });
+      await loadJobSignatures(editingJob.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -3243,6 +3296,64 @@ function TechnicianJobsPage({ user }) {
                 </div>
               ) : (
                 <div className="empty-state">No evidence uploaded yet.</div>
+              )}
+            </div>
+
+            <div className="job-signoff-panel">
+              <div className="table-header">
+                <strong>Job Sign-Off</strong>
+                <span>{signatures.length} signatures</span>
+              </div>
+
+              <div className="form-grid signoff-form-grid">
+                <Field
+                  label="Signer name"
+                  value={signatureForm.signer_name}
+                  onChange={(value) => setSignatureForm((current) => ({ ...current, signer_name: value }))}
+                  required
+                />
+                <Field
+                  label="Signer role"
+                  value={signatureForm.signer_role}
+                  onChange={(value) => setSignatureForm((current) => ({ ...current, signer_role: value }))}
+                />
+                <Field
+                  label="Signature"
+                  value={signatureForm.signature_text}
+                  onChange={(value) => setSignatureForm((current) => ({ ...current, signature_text: value }))}
+                  required
+                />
+                <Field
+                  label="Notes"
+                  value={signatureForm.notes}
+                  onChange={(value) => setSignatureForm((current) => ({ ...current, notes: value }))}
+                />
+              </div>
+
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={saveSignature}
+                disabled={busy || !signatureForm.signer_name.trim() || !signatureForm.signature_text.trim()}
+              >
+                <Save size={16} />
+                Add Sign-Off
+              </button>
+
+              {signatures.length ? (
+                <div className="signature-list">
+                  {signatures.map((signature) => (
+                    <div className="signature-row" key={signature.id}>
+                      <div>
+                        <strong>{signature.signer_name}</strong>
+                        <span>{signature.signer_role || "No role"} / {formatDateForDisplay(signature.signed_at)}</span>
+                      </div>
+                      <span>{signature.signature_text}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">No sign-off captured yet.</div>
               )}
             </div>
 

@@ -128,6 +128,20 @@ function publicChecklistItem(row) {
   };
 }
 
+function publicJobSignature(row) {
+  return {
+    id: row.id,
+    work_order_id: row.work_order_id,
+    signer_name: row.signer_name,
+    signer_role: row.signer_role,
+    signature_text: row.signature_text,
+    notes: row.notes,
+    signed_by: row.signed_by,
+    signed_by_name: row.signed_by_name,
+    signed_at: row.signed_at
+  };
+}
+
 async function canAccessJob(pool, req, id) {
   const result = await pool.query(
     "SELECT id, assigned_user_id, work_order_reference FROM work_orders WHERE id = $1 LIMIT 1",
@@ -426,6 +440,111 @@ router.patch("/jobs/:id/checklist/:itemId", requirePermission(PERMISSIONS.TECHNI
     return res.json({
       ok: true,
       checklist_item: publicChecklistItem(result.rows[0])
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/jobs/:id/signatures", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Invalid job ID" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT wos.*, u.name AS signed_by_name
+      FROM work_order_signatures wos
+      LEFT JOIN users u ON u.id = wos.signed_by
+      WHERE wos.work_order_id = $1
+      ORDER BY wos.signed_at DESC, wos.id DESC
+      `,
+      [id]
+    );
+
+    return res.json({
+      ok: true,
+      signatures: result.rows.map(publicJobSignature)
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/jobs/:id/signatures", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_UPDATE), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const signerName = cleanText(req.body.signer_name);
+    const signatureText = cleanText(req.body.signature_text);
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Invalid job ID" });
+    }
+
+    if (!signerName) {
+      return res.status(400).json({ ok: false, error: "Signer name is required" });
+    }
+
+    if (!signatureText) {
+      return res.status(400).json({ ok: false, error: "Signature is required" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO work_order_signatures (
+        work_order_id,
+        signer_name,
+        signer_role,
+        signature_text,
+        notes,
+        signed_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+      `,
+      [
+        id,
+        signerName,
+        cleanText(req.body.signer_role),
+        signatureText,
+        cleanText(req.body.notes),
+        req.user.id
+      ]
+    );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "technician_job.signature_created",
+      entityType: "work_order",
+      entityId: id,
+      metadata: {
+        work_order_reference: access.job.work_order_reference,
+        signature_id: result.rows[0].id,
+        signer_name: result.rows[0].signer_name,
+        signer_role: result.rows[0].signer_role
+      }
+    });
+
+    return res.status(201).json({
+      ok: true,
+      signature: publicJobSignature(result.rows[0])
     });
   } catch (err) {
     return next(err);

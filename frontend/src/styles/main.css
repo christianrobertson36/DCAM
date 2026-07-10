@@ -713,6 +713,12 @@ h1 {
   padding-top: 18px;
 }
 
+.job-signoff-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
 .job-evidence-panel .table-header {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -721,6 +727,43 @@ h1 {
 .job-checklist-panel .table-header {
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.job-signoff-panel .table-header {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+.signoff-form-grid {
+  margin-bottom: 14px;
+}
+
+.signature-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.signature-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+}
+
+.signature-row strong,
+.signature-row span {
+  display: block;
+}
+
+.signature-row span {
+  color: #64748b;
+  font-size: 13px;
 }
 
 .checklist-add-row {

@@ -370,6 +370,17 @@ export async function updateTechnicianJobChecklistItem(jobId, itemId, payload) {
   });
 }
 
+export async function listTechnicianJobSignatures(jobId) {
+  return apiRequest(`/api/technician/jobs/${jobId}/signatures`);
+}
+
+export async function createTechnicianJobSignature(jobId, payload) {
+  return apiRequest(`/api/technician/jobs/${jobId}/signatures`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getStaffSummary() {
   return apiRequest("/api/staff/summary");
 }
