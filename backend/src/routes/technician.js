@@ -1,4 +1,7 @@
 const express = require("express");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const { PERMISSIONS, hasPermission } = require("../config/permissions");
 const { getPool } = require("../db/pool");
@@ -6,6 +9,7 @@ const { authRequired, requirePermission } = require("../middleware/authRequired"
 const { writeAuditEvent } = require("../utils/audit");
 
 const router = express.Router();
+const uploadRoot = path.resolve(process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads"));
 
 router.use(authRequired);
 
@@ -23,6 +27,31 @@ function cleanText(value) {
 function cleanInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function cleanFilename(value) {
+  const text = cleanText(value) || "job-file";
+  return text.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").slice(0, 180);
+}
+
+function cleanFileKind(value) {
+  const text = cleanText(value);
+  return text === "document" ? "document" : "photo";
+}
+
+function decodeBase64File(value) {
+  const text = cleanText(value);
+
+  if (!text) {
+    return null;
+  }
+
+  const payload = text.includes(",") ? text.split(",").pop() : text;
+  return Buffer.from(payload, "base64");
+}
+
+function workOrderUploadDir(workOrderId) {
+  return path.join(uploadRoot, "work-orders", String(workOrderId));
 }
 
 function canManageTechnicianJobs(user) {
@@ -66,6 +95,39 @@ function publicTechnicianJob(row) {
     completion_notes: row.completion_notes,
     updated_at: row.updated_at
   };
+}
+
+function publicJobFile(row) {
+  return {
+    id: row.id,
+    work_order_id: row.work_order_id,
+    file_kind: row.file_kind,
+    original_filename: row.original_filename,
+    content_type: row.content_type,
+    file_size: row.file_size,
+    notes: row.notes,
+    uploaded_by: row.uploaded_by,
+    uploaded_by_name: row.uploaded_by_name,
+    created_at: row.created_at
+  };
+}
+
+async function canAccessJob(pool, req, id) {
+  const result = await pool.query(
+    "SELECT id, assigned_user_id, work_order_reference FROM work_orders WHERE id = $1 LIMIT 1",
+    [id]
+  );
+  const job = result.rows[0];
+
+  if (!job) {
+    return { ok: false, status: 404, error: "Job not found" };
+  }
+
+  if (!canManageTechnicianJobs(req.user) && job.assigned_user_id !== req.user.id) {
+    return { ok: false, status: 403, error: "You can only access jobs assigned to you" };
+  }
+
+  return { ok: true, job };
 }
 
 async function getTechnicianJob(pool, id) {
@@ -193,6 +255,165 @@ router.get("/jobs/summary", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_VIEW),
       ok: true,
       summary: result.rows[0]
     });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/jobs/:id/files", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Invalid job ID" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT wof.*, u.name AS uploaded_by_name
+      FROM work_order_files wof
+      LEFT JOIN users u ON u.id = wof.uploaded_by
+      WHERE wof.work_order_id = $1
+      ORDER BY wof.created_at DESC, wof.id DESC
+      `,
+      [id]
+    );
+
+    return res.json({
+      ok: true,
+      files: result.rows.map(publicJobFile)
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/jobs/:id/files", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_UPDATE), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const content = decodeBase64File(req.body.content_base64);
+    const originalFilename = cleanFilename(req.body.original_filename);
+    const contentType = cleanText(req.body.content_type) || "application/octet-stream";
+    const fileKind = cleanFileKind(req.body.file_kind);
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Invalid job ID" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    if (!content || !content.length) {
+      return res.status(400).json({ ok: false, error: "File content is required" });
+    }
+
+    if (content.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ ok: false, error: "File must be 5MB or smaller" });
+    }
+
+    const extension = path.extname(originalFilename).slice(0, 12);
+    const storedFilename = `${Date.now()}-${crypto.randomBytes(12).toString("hex")}${extension}`;
+    const directory = workOrderUploadDir(id);
+
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, storedFilename), content);
+
+    const result = await pool.query(
+      `
+      INSERT INTO work_order_files (
+        work_order_id,
+        file_kind,
+        original_filename,
+        stored_filename,
+        content_type,
+        file_size,
+        notes,
+        uploaded_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+      `,
+      [
+        id,
+        fileKind,
+        originalFilename,
+        storedFilename,
+        contentType,
+        content.length,
+        cleanText(req.body.notes),
+        req.user.id
+      ]
+    );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "technician_job.file_uploaded",
+      entityType: "work_order",
+      entityId: id,
+      metadata: {
+        work_order_reference: access.job.work_order_reference,
+        file_id: result.rows[0].id,
+        file_kind: result.rows[0].file_kind,
+        original_filename: result.rows[0].original_filename,
+        file_size: result.rows[0].file_size
+      }
+    });
+
+    return res.status(201).json({
+      ok: true,
+      file: publicJobFile(result.rows[0])
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/jobs/:id/files/:fileId/download", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const fileId = cleanInteger(req.params.fileId);
+
+    if (!id || !fileId) {
+      return res.status(400).json({ ok: false, error: "Invalid file request" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const result = await pool.query(
+      "SELECT * FROM work_order_files WHERE id = $1 AND work_order_id = $2 LIMIT 1",
+      [fileId, id]
+    );
+    const file = result.rows[0];
+
+    if (!file) {
+      return res.status(404).json({ ok: false, error: "File not found" });
+    }
+
+    const filePath = path.join(workOrderUploadDir(id), file.stored_filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ ok: false, error: "Stored file not found" });
+    }
+
+    res.setHeader("Content-Type", file.content_type);
+    res.setHeader("Content-Disposition", `attachment; filename="${cleanFilename(file.original_filename)}"`);
+    return res.sendFile(filePath);
   } catch (err) {
     return next(err);
   }

@@ -23,7 +23,7 @@
     build:
       context: .
       dockerfile: backend/Dockerfile
-    image: ghcr.io/christianrobertson36/dcam-api:v19
+    image: ghcr.io/christianrobertson36/dcam-api:v20
     container_name: dcam-api
     restart: unless-stopped
     environment:
@@ -47,7 +47,7 @@
       context: ./frontend
       args:
         VITE_API_URL: http://localhost:5056
-    image: ghcr.io/christianrobertson36/dcam-web:v19
+    image: ghcr.io/christianrobertson36/dcam-web:v20
     container_name: dcam-web
     restart: unless-stopped
     ports:

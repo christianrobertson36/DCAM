@@ -28,6 +28,7 @@ import {
   createWorkOrder,
   deleteAssetFile,
   downloadAssetFile,
+  downloadTechnicianJobFile,
   getAssetSummary,
   getBuildingSummary,
   getCustomerSummary,
@@ -46,6 +47,7 @@ import {
   listStaffProfiles,
   listStaffQualifications,
   listStaffUsers,
+  listTechnicianJobFiles,
   listTechnicianJobs,
   listWorkOrders,
   login,
@@ -57,7 +59,8 @@ import {
   updateScheduleAssignment,
   updateStaffProfile,
   updateTechnicianJob,
-  updateWorkOrder
+  updateWorkOrder,
+  uploadTechnicianJobFile
 } from "./api";
 import "./styles/main.css";
 
@@ -360,7 +363,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v19 Technician Jobs Foundation</p>
+        <p className="eyebrow">v20 Job Evidence Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -450,7 +453,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v19 Technician Jobs Foundation</p>
+            <p className="eyebrow">v20 Job Evidence Foundation</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -2830,7 +2833,14 @@ function TechnicianJobsPage({ user }) {
     status: "In Progress",
     completion_notes: ""
   });
+  const [jobFiles, setJobFiles] = useState([]);
+  const [evidenceForm, setEvidenceForm] = useState({
+    file_kind: "photo",
+    file: null,
+    notes: ""
+  });
   const [busy, setBusy] = useState(false);
+  const [fileBusy, setFileBusy] = useState(false);
   const [error, setError] = useState("");
   const canUpdate = hasPermission(user, PERMISSIONS.TECHNICIAN_JOBS_UPDATE);
 
@@ -2859,14 +2869,26 @@ function TechnicianJobsPage({ user }) {
     }
   }
 
+  async function loadJobFiles(jobId) {
+    const data = await listTechnicianJobFiles(jobId);
+    setJobFiles(data.files || []);
+  }
+
   function openUpdateForm(job) {
     setEditingJob(job);
     setForm({
       status: job.status || "In Progress",
       completion_notes: job.completion_notes || ""
     });
+    setEvidenceForm({
+      file_kind: "photo",
+      file: null,
+      notes: ""
+    });
+    setJobFiles([]);
     setFormOpen(true);
     setError("");
+    loadJobFiles(job.id).catch((err) => setError(err.message));
   }
 
   function closeForm() {
@@ -2876,6 +2898,12 @@ function TechnicianJobsPage({ user }) {
       status: "In Progress",
       completion_notes: ""
     });
+    setEvidenceForm({
+      file_kind: "photo",
+      file: null,
+      notes: ""
+    });
+    setJobFiles([]);
   }
 
   async function saveJob(event) {
@@ -2891,6 +2919,54 @@ function TechnicianJobsPage({ user }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function uploadEvidence() {
+    if (!editingJob || !evidenceForm.file) {
+      return;
+    }
+
+    setFileBusy(true);
+    setError("");
+
+    try {
+      const content = await fileToBase64(evidenceForm.file);
+      await uploadTechnicianJobFile(editingJob.id, {
+        file_kind: evidenceForm.file_kind,
+        original_filename: evidenceForm.file.name,
+        content_type: evidenceForm.file.type || "application/octet-stream",
+        content_base64: content,
+        notes: evidenceForm.notes
+      });
+      setEvidenceForm({
+        file_kind: "photo",
+        file: null,
+        notes: ""
+      });
+      await loadJobFiles(editingJob.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFileBusy(false);
+    }
+  }
+
+  async function downloadEvidence(file) {
+    setError("");
+
+    try {
+      const blob = await downloadTechnicianJobFile(editingJob.id, file.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.original_filename || "job-file";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -3013,6 +3089,64 @@ function TechnicianJobsPage({ user }) {
                   rows={4}
                 />
               </label>
+            </div>
+
+            <div className="job-evidence-panel">
+              <div className="table-header">
+                <strong>Job Evidence</strong>
+                <span>{jobFiles.length} files</span>
+              </div>
+
+              <div className="asset-upload-grid">
+                <label>
+                  Kind
+                  <select
+                    value={evidenceForm.file_kind}
+                    onChange={(event) => setEvidenceForm((current) => ({ ...current, file_kind: event.target.value }))}
+                  >
+                    <option value="photo">Photo</option>
+                    <option value="document">Document</option>
+                  </select>
+                </label>
+
+                <label>
+                  File
+                  <input
+                    type="file"
+                    onChange={(event) => setEvidenceForm((current) => ({ ...current, file: event.target.files?.[0] || null }))}
+                  />
+                </label>
+
+                <Field
+                  label="Notes"
+                  value={evidenceForm.notes}
+                  onChange={(value) => setEvidenceForm((current) => ({ ...current, notes: value }))}
+                />
+
+                <button className="secondary-button" type="button" onClick={uploadEvidence} disabled={fileBusy || !evidenceForm.file}>
+                  <Plus size={16} />
+                  Upload
+                </button>
+              </div>
+
+              {jobFiles.length ? (
+                <div className="asset-file-list">
+                  {jobFiles.map((file) => (
+                    <div className="asset-file-row" key={file.id}>
+                      <div>
+                        <strong>{file.original_filename}</strong>
+                        <span>{file.file_kind} / {formatFileSize(file.file_size)} / {formatDateForDisplay(file.created_at)}</span>
+                      </div>
+                      <button className="secondary-button" type="button" onClick={() => downloadEvidence(file)}>
+                        <Download size={16} />
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">No evidence uploaded yet.</div>
+              )}
             </div>
 
             <div className="form-actions">

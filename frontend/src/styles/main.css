@@ -701,6 +701,17 @@ h1 {
   padding-top: 18px;
 }
 
+.job-evidence-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
+.job-evidence-panel .table-header {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .asset-qr-panel,
 .asset-history-panel {
   border-top: 1px solid var(--border);
