@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import QRCode from "qrcode";
 import {
   LayoutDashboard,
   Building2,
@@ -26,6 +27,7 @@ import {
   getCustomerSummary,
   getMe,
   listAssetFiles,
+  listAssetHistory,
   listAssetOptions,
   listAssets,
   listBuildings,
@@ -1100,7 +1102,9 @@ function AssetsPage({ user }) {
   const [editingAsset, setEditingAsset] = useState(null);
   const [form, setForm] = useState(emptyAsset);
   const [assetFiles, setAssetFiles] = useState([]);
+  const [assetHistory, setAssetHistory] = useState([]);
   const [assetOptions, setAssetOptions] = useState(fallbackAssetOptions);
+  const [qrDataUrl, setQrDataUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileKind, setFileKind] = useState("document");
   const [fileNotes, setFileNotes] = useState("");
@@ -1166,6 +1170,8 @@ function AssetsPage({ user }) {
       building_id: buildingId || buildings[0]?.id || ""
     });
     setAssetFiles([]);
+    setAssetHistory([]);
+    setQrDataUrl("");
     setSelectedFile(null);
     setFileNotes("");
     setFileKind("document");
@@ -1185,12 +1191,16 @@ function AssetsPage({ user }) {
       warranty_expiry: formatDateForInput(asset.warranty_expiry)
     });
     setAssetFiles([]);
+    setAssetHistory([]);
+    setQrDataUrl("");
     setSelectedFile(null);
     setFileNotes("");
     setFileKind("document");
     setFormOpen(true);
     setError("");
     loadAssetFiles(asset.id).catch((err) => setError(err.message));
+    loadAssetHistory(asset.id).catch((err) => setError(err.message));
+    generateQr(asset).catch((err) => setError(err.message));
   }
 
   function closeForm() {
@@ -1198,6 +1208,8 @@ function AssetsPage({ user }) {
     setEditingAsset(null);
     setForm(emptyAsset);
     setAssetFiles([]);
+    setAssetHistory([]);
+    setQrDataUrl("");
     setSelectedFile(null);
     setFileNotes("");
     setFileKind("document");
@@ -1241,6 +1253,25 @@ function AssetsPage({ user }) {
     setAssetFiles(data.files || []);
   }
 
+  async function loadAssetHistory(assetId) {
+    const data = await listAssetHistory(assetId);
+    setAssetHistory(data.history || []);
+  }
+
+  async function generateQr(asset) {
+    if (!asset.qr_token) {
+      setQrDataUrl("");
+      return;
+    }
+
+    const url = `${window.location.origin}/asset-scan/${asset.qr_token}`;
+    const dataUrl = await QRCode.toDataURL(url, {
+      margin: 1,
+      width: 220
+    });
+    setQrDataUrl(dataUrl);
+  }
+
   async function saveAssetFile(event) {
     event.preventDefault();
 
@@ -1264,6 +1295,7 @@ function AssetsPage({ user }) {
       setFileNotes("");
       setFileKind("document");
       await loadAssetFiles(editingAsset.id);
+      await loadAssetHistory(editingAsset.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1298,6 +1330,7 @@ function AssetsPage({ user }) {
     try {
       await deleteAssetFile(editingAsset.id, file.id);
       await loadAssetFiles(editingAsset.id);
+      await loadAssetHistory(editingAsset.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1573,6 +1606,19 @@ function AssetsPage({ user }) {
             </div>
 
             {editingAsset ? (
+              <section className="asset-qr-panel">
+                <div>
+                  <p className="eyebrow">Asset QR</p>
+                  <h3>{editingAsset.asset_reference}</h3>
+                  <span>{editingAsset.qr_token || "QR token pending"}</span>
+                </div>
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt={`QR code for ${editingAsset.asset_reference}`} />
+                ) : null}
+              </section>
+            ) : null}
+
+            {editingAsset ? (
               <section className="asset-files-panel">
                 <div className="table-header">
                   <strong>Documents and Photos</strong>
@@ -1643,6 +1689,33 @@ function AssetsPage({ user }) {
                 ) : (
                   <div className="empty-state">
                     No documents or photos uploaded for this asset yet.
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {editingAsset ? (
+              <section className="asset-history-panel">
+                <div className="table-header">
+                  <strong>Asset Timeline</strong>
+                  <span>{assetHistory.length} events</span>
+                </div>
+
+                {assetHistory.length ? (
+                  <div className="asset-history-list">
+                    {assetHistory.map((event) => (
+                      <div className="asset-history-row" key={event.id}>
+                        <div>
+                          <strong>{event.event_title}</strong>
+                          <span>{event.actor_name || "System"} / {formatDateForDisplay(event.created_at)}</span>
+                        </div>
+                        <span>{event.event_type}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    No asset history has been recorded yet.
                   </div>
                 )}
               </section>

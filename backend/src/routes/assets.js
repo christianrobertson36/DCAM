@@ -54,6 +54,7 @@ function publicAsset(row) {
     customer_id: row.customer_id,
     customer_name: row.customer_name,
     asset_reference: row.asset_reference,
+    qr_token: row.qr_token,
     asset_name: row.asset_name,
     asset_tag: row.asset_tag,
     asset_category: row.asset_category,
@@ -77,6 +78,49 @@ function publicAsset(row) {
     created_at: row.created_at,
     updated_at: row.updated_at
   };
+}
+
+function publicAssetHistory(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    asset_id: row.asset_id,
+    actor_user_id: row.actor_user_id,
+    actor_name: row.actor_name,
+    event_type: row.event_type,
+    event_title: row.event_title,
+    metadata: row.metadata,
+    created_at: row.created_at
+  };
+}
+
+function newQrToken() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+async function writeAssetHistory(pool, options) {
+  await pool.query(
+    `
+    INSERT INTO asset_history (
+      asset_id,
+      actor_user_id,
+      event_type,
+      event_title,
+      metadata
+    )
+    VALUES ($1, $2, $3, $4, $5)
+    `,
+    [
+      options.assetId,
+      options.actorUserId,
+      options.eventType,
+      options.eventTitle,
+      JSON.stringify(options.metadata || {})
+    ]
+  );
 }
 
 function publicAssetFile(row) {
@@ -297,6 +341,50 @@ router.get("/summary", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, r
   }
 });
 
+router.get("/qr/:token", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const token = cleanText(req.params.token);
+
+    if (!token) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid QR token"
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        a.*,
+        b.name AS building_name,
+        c.id AS customer_id,
+        c.company_name AS customer_name
+      FROM assets a
+      JOIN buildings b ON b.id = a.building_id
+      JOIN customers c ON c.id = b.customer_id
+      WHERE a.qr_token = $1
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({
+        ok: false,
+        error: "Asset not found"
+      });
+    }
+
+    return res.json({
+      ok: true,
+      asset: publicAsset(result.rows[0])
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.get("/:id", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
@@ -321,6 +409,50 @@ router.get("/:id", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, 
     return res.json({
       ok: true,
       asset: publicAsset(asset)
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/:id/history", requirePermission(PERMISSIONS.ASSETS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid asset ID"
+      });
+    }
+
+    const asset = await joinedAsset(pool, id);
+
+    if (!asset) {
+      return res.status(404).json({
+        ok: false,
+        error: "Asset not found"
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        h.*,
+        u.name AS actor_name
+      FROM asset_history h
+      LEFT JOIN users u ON u.id = h.actor_user_id
+      WHERE h.asset_id = $1
+      ORDER BY h.created_at DESC, h.id DESC
+      LIMIT 100
+      `,
+      [id]
+    );
+
+    return res.json({
+      ok: true,
+      history: result.rows.map(publicAssetHistory)
     });
   } catch (err) {
     return next(err);
@@ -455,6 +587,18 @@ router.post("/:id/files", requirePermission(PERMISSIONS.ASSETS_EDIT), async (req
       }
     });
 
+    await writeAssetHistory(pool, {
+      assetId: id,
+      actorUserId: req.user.id,
+      eventType: "asset.file_uploaded",
+      eventTitle: `${result.rows[0].file_kind === "photo" ? "Photo" : "Document"} uploaded`,
+      metadata: {
+        file_id: result.rows[0].id,
+        original_filename: result.rows[0].original_filename,
+        file_size: result.rows[0].file_size
+      }
+    });
+
     return res.status(201).json({
       ok: true,
       file: publicAssetFile(result.rows[0])
@@ -553,6 +697,18 @@ router.delete("/:id/files/:fileId", requirePermission(PERMISSIONS.ASSETS_EDIT), 
       }
     });
 
+    await writeAssetHistory(pool, {
+      assetId: id,
+      actorUserId: req.user.id,
+      eventType: "asset.file_deleted",
+      eventTitle: `${file.file_kind === "photo" ? "Photo" : "Document"} deleted`,
+      metadata: {
+        file_id: file.id,
+        original_filename: file.original_filename,
+        file_size: file.file_size
+      }
+    });
+
     return res.json({
       ok: true
     });
@@ -621,6 +777,7 @@ router.post("/", requirePermission(PERMISSIONS.ASSETS_CREATE), async (req, res, 
       cleanText(req.body.warranty_reference),
       cleanDate(req.body.warranty_expiry),
       cleanText(req.body.notes),
+      newQrToken(),
       req.user.id
     ];
 
@@ -647,13 +804,14 @@ router.post("/", requirePermission(PERMISSIONS.ASSETS_CREATE), async (req, res, 
         warranty_reference,
         warranty_expiry,
         notes,
+        qr_token,
         created_by,
         updated_by
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
         $9, $10, $11, $12, $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $21
+        $17, $18, $19, $20, $21, $22, $22
       )
       RETURNING *
       `,
@@ -673,6 +831,18 @@ router.post("/", requirePermission(PERMISSIONS.ASSETS_CREATE), async (req, res, 
         asset_name: result.rows[0].asset_name,
         asset_tag: result.rows[0].asset_tag,
         asset_category: result.rows[0].asset_category,
+        status: result.rows[0].status
+      }
+    });
+
+    await writeAssetHistory(pool, {
+      assetId: result.rows[0].id,
+      actorUserId: req.user.id,
+      eventType: "asset.created",
+      eventTitle: "Asset created",
+      metadata: {
+        asset_reference: result.rows[0].asset_reference,
+        asset_name: result.rows[0].asset_name,
         status: result.rows[0].status
       }
     });
@@ -824,6 +994,21 @@ router.patch("/:id", requirePermission(PERMISSIONS.ASSETS_EDIT), async (req, res
         asset_tag: asset.asset_tag,
         previous_asset_category: existing.rows[0].asset_category,
         asset_category: asset.asset_category,
+        previous_status: existing.rows[0].status,
+        status: asset.status,
+        previous_condition: existing.rows[0].condition,
+        condition: asset.condition
+      }
+    });
+
+    await writeAssetHistory(pool, {
+      assetId: id,
+      actorUserId: req.user.id,
+      eventType: "asset.updated",
+      eventTitle: "Asset updated",
+      metadata: {
+        asset_reference: asset.asset_reference,
+        asset_name: asset.asset_name,
         previous_status: existing.rows[0].status,
         status: asset.status,
         previous_condition: existing.rows[0].condition,

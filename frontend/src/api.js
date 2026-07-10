@@ -193,6 +193,14 @@ export async function updateAsset(id, payload) {
   });
 }
 
+export async function getAssetByQrToken(token) {
+  return apiRequest(`/api/assets/qr/${token}`);
+}
+
+export async function listAssetHistory(assetId) {
+  return apiRequest(`/api/assets/${assetId}/history`);
+}
+
 export async function listAssetFiles(assetId) {
   return apiRequest(`/api/assets/${assetId}/files`);
 }
