@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Building2,
   CalendarDays,
+  ClipboardCheck,
   Download,
   Users,
   LogOut,
@@ -33,6 +34,7 @@ import {
   getMe,
   getScheduleSummary,
   getStaffSummary,
+  getTechnicianJobSummary,
   getWorkOrderSummary,
   listAssetFiles,
   listAssetHistory,
@@ -44,6 +46,7 @@ import {
   listStaffProfiles,
   listStaffQualifications,
   listStaffUsers,
+  listTechnicianJobs,
   listWorkOrders,
   login,
   updateAsset,
@@ -53,6 +56,7 @@ import {
   updateCustomer,
   updateScheduleAssignment,
   updateStaffProfile,
+  updateTechnicianJob,
   updateWorkOrder
 } from "./api";
 import "./styles/main.css";
@@ -102,7 +106,10 @@ const PERMISSIONS = {
   STAFF_ADMIN: "staff:admin",
   SCHEDULE_VIEW: "schedule:view",
   SCHEDULE_CREATE: "schedule:create",
-  SCHEDULE_EDIT: "schedule:edit"
+  SCHEDULE_EDIT: "schedule:edit",
+  TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
+  TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
+  TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage"
 };
 
 const navItems = [
@@ -112,6 +119,7 @@ const navItems = [
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
   { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
+  { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN }
 ];
@@ -352,7 +360,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v18 Scheduling Foundation</p>
+        <p className="eyebrow">v19 Technician Jobs Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -405,7 +413,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "People" || activePage === "Asset Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -442,7 +450,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v18 Scheduling Foundation</p>
+            <p className="eyebrow">v19 Technician Jobs Foundation</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -463,9 +471,10 @@ function AdminShell({ user, onLogout }) {
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
         {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
+        {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "People" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -2795,6 +2804,222 @@ function SchedulePage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Assignment"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TechnicianJobsPage({ user }) {
+  const [jobs, setJobs] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    open: 0,
+    in_progress: 0,
+    on_hold: 0,
+    completed: 0,
+    overdue: 0
+  });
+  const [status, setStatus] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
+  const [form, setForm] = useState({
+    status: "In Progress",
+    completion_notes: ""
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canUpdate = hasPermission(user, PERMISSIONS.TECHNICIAN_JOBS_UPDATE);
+
+  async function loadJobs() {
+    const [summaryData, jobsData] = await Promise.all([
+      getTechnicianJobSummary(),
+      listTechnicianJobs({ status })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setJobs(jobsData.jobs || []);
+  }
+
+  useEffect(() => {
+    loadJobs().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadJobs();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openUpdateForm(job) {
+    setEditingJob(job);
+    setForm({
+      status: job.status || "In Progress",
+      completion_notes: job.completion_notes || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingJob(null);
+    setForm({
+      status: "In Progress",
+      completion_notes: ""
+    });
+  }
+
+  async function saveJob(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      await updateTechnicianJob(editingJob.id, form);
+      closeForm();
+      await loadJobs();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Assigned", value: summary.total || 0 },
+    { label: "Open", value: summary.open || 0 },
+    { label: "In Progress", value: summary.in_progress || 0 },
+    { label: "On Hold", value: summary.on_hold || 0 },
+    { label: "Completed", value: summary.completed || 0 },
+    { label: "Overdue", value: summary.overdue || 0 }
+  ];
+
+  return (
+    <div className="technician-jobs-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Technician App Foundation</p>
+          <h2>Assigned jobs</h2>
+          <p>View allocated work and update job status from the assigned-user job queue.</p>
+        </div>
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar technician-jobs-filter" onSubmit={handleSearch}>
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option>Open</option>
+          <option>In Progress</option>
+          <option>On Hold</option>
+          <option>Completed</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>My Jobs</strong>
+          <span>{jobs.length} shown</span>
+        </div>
+
+        {jobs.length ? (
+          <div className="customer-list">
+            {jobs.map((job) => (
+              <button
+                className="customer-row technician-job-row"
+                disabled={!canUpdate}
+                key={job.id}
+                onClick={() => {
+                  if (canUpdate) {
+                    openUpdateForm(job);
+                  }
+                }}
+              >
+                <div>
+                  <strong>{job.title}</strong>
+                  <span>{job.work_order_reference}</span>
+                </div>
+                <div>
+                  <span>{job.priority} / {job.work_order_type}</span>
+                  <span>{job.asset_reference || job.asset_name || "No asset"}</span>
+                </div>
+                <div>
+                  <span>{job.customer_name || "No customer"}</span>
+                  <span>{job.building_name || "No building"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(job.status)}`}>{job.status}</span>
+                  <span>
+                    {job.next_schedule_date ? `Scheduled: ${formatDateForDisplay(job.next_schedule_date)}` : job.due_date ? `Due: ${formatDateForDisplay(job.due_date)}` : "No date"}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No assigned jobs yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveJob}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">Update Job</p>
+                <h2>{editingJob?.work_order_reference}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
+                  <option>Open</option>
+                  <option>In Progress</option>
+                  <option>On Hold</option>
+                  <option>Completed</option>
+                </select>
+              </label>
+
+              <label className="wide-field">
+                Completion notes
+                <textarea
+                  value={form.completion_notes || ""}
+                  onChange={(event) => setForm((current) => ({ ...current, completion_notes: event.target.value }))}
+                  rows={4}
+                />
+              </label>
+            </div>
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Job"}
               </button>
             </div>
           </form>

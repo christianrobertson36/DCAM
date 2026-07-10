@@ -313,6 +313,30 @@ export async function updateScheduleAssignment(id, payload) {
   });
 }
 
+export async function getTechnicianJobSummary() {
+  return apiRequest("/api/technician/jobs/summary");
+}
+
+export async function listTechnicianJobs(params = {}) {
+  const query = new URLSearchParams();
+
+  ["status", "assigned_user_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/technician/jobs${suffix}`);
+}
+
+export async function updateTechnicianJob(id, payload) {
+  return apiRequest(`/api/technician/jobs/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getStaffSummary() {
   return apiRequest("/api/staff/summary");
 }

@@ -897,6 +897,10 @@ h1 {
   grid-template-columns: 150px 150px minmax(220px, 1fr) 170px auto;
 }
 
+.technician-jobs-filter {
+  grid-template-columns: 190px auto;
+}
+
 .people-filter {
   grid-template-columns: 1fr 160px 180px auto;
 }
@@ -962,6 +966,10 @@ h1 {
   content: "SCH ";
 }
 
+.technician-job-row strong::before {
+  content: "JOB ";
+}
+
 .people-row strong::before {
   content: "P ";
 }
@@ -983,6 +991,7 @@ h1 {
   .assets-filter,
   .work-orders-filter,
   .schedule-filter,
+  .technician-jobs-filter,
   .people-filter {
     grid-template-columns: 1fr;
   }
