@@ -281,3 +281,49 @@ export async function updateWorkOrder(id, payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function getStaffSummary() {
+  return apiRequest("/api/staff/summary");
+}
+
+export async function listStaffUsers() {
+  return apiRequest("/api/staff/users");
+}
+
+export async function listStaffProfiles(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "role", "availability_status"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/staff${suffix}`);
+}
+
+export async function createStaffProfile(payload) {
+  return apiRequest("/api/staff", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateStaffProfile(id, payload) {
+  return apiRequest(`/api/staff/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listStaffQualifications(profileId) {
+  return apiRequest(`/api/staff/${profileId}/qualifications`);
+}
+
+export async function createStaffQualification(profileId, payload) {
+  return apiRequest(`/api/staff/${profileId}/qualifications`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}

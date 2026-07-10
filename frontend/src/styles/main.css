@@ -883,6 +883,10 @@ h1 {
   grid-template-columns: 1fr 160px 170px auto;
 }
 
+.people-filter {
+  grid-template-columns: 1fr 160px 180px auto;
+}
+
 .status-badge.survey-required {
   background: #ede9fe;
   color: #6d28d9;
@@ -930,10 +934,27 @@ h1 {
   content: "WO ";
 }
 
+.people-row strong::before {
+  content: "P ";
+}
+
+.qualification-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.qualification-form {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
 @media (max-width: 900px) {
   .buildings-filter,
   .assets-filter,
-  .work-orders-filter {
+  .work-orders-filter,
+  .people-filter {
     grid-template-columns: 1fr;
   }
 }

@@ -20,6 +20,8 @@ import {
   createAssetOption,
   createBuilding,
   createCustomer,
+  createStaffProfile,
+  createStaffQualification,
   createWorkOrder,
   deleteAssetFile,
   downloadAssetFile,
@@ -27,6 +29,7 @@ import {
   getBuildingSummary,
   getCustomerSummary,
   getMe,
+  getStaffSummary,
   getWorkOrderSummary,
   listAssetFiles,
   listAssetHistory,
@@ -34,6 +37,9 @@ import {
   listAssets,
   listBuildings,
   listCustomers,
+  listStaffProfiles,
+  listStaffQualifications,
+  listStaffUsers,
   listWorkOrders,
   login,
   updateAsset,
@@ -41,6 +47,7 @@ import {
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
+  updateStaffProfile,
   updateWorkOrder
 } from "./api";
 import "./styles/main.css";
@@ -84,7 +91,10 @@ const PERMISSIONS = {
   WORK_ORDERS_VIEW: "work_orders:view",
   WORK_ORDERS_CREATE: "work_orders:create",
   WORK_ORDERS_EDIT: "work_orders:edit",
-  WORK_ORDERS_ASSIGN: "work_orders:assign"
+  WORK_ORDERS_ASSIGN: "work_orders:assign",
+  STAFF_VIEW: "staff:view",
+  STAFF_EDIT: "staff:edit",
+  STAFF_ADMIN: "staff:admin"
 };
 
 const navItems = [
@@ -93,6 +103,7 @@ const navItems = [
   { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
+  { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN }
 ];
 
@@ -186,6 +197,28 @@ const emptyWorkOrder = {
   assigned_user_id: "",
   due_date: "",
   completion_notes: ""
+};
+
+const emptyStaffProfile = {
+  user_id: "",
+  job_title: "",
+  employment_type: "Employee",
+  phone: "",
+  skills: "",
+  service_areas: "",
+  working_hours: "",
+  availability_status: "Available",
+  competency_notes: ""
+};
+
+const emptyQualification = {
+  qualification_name: "",
+  issuing_body: "",
+  certificate_number: "",
+  issue_date: "",
+  expiry_date: "",
+  status: "Valid",
+  notes: ""
 };
 
 function hasPermission(user, permission) {
@@ -353,7 +386,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Asset Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "People" || activePage === "Asset Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -410,8 +443,9 @@ function AdminShell({ user, onLogout }) {
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
+        {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "People" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -1753,6 +1787,365 @@ function AssetsPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Asset"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PeoplePage({ user }) {
+  const [profiles, setProfiles] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [qualifications, setQualifications] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    engineers: 0,
+    technicians: 0,
+    available: 0,
+    unavailable: 0
+  });
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState("");
+  const [availability, setAvailability] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(null);
+  const [form, setForm] = useState(emptyStaffProfile);
+  const [qualificationForm, setQualificationForm] = useState(emptyQualification);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canEdit = hasPermission(user, PERMISSIONS.STAFF_EDIT);
+
+  async function loadPeople() {
+    const [summaryData, profilesData, usersData] = await Promise.all([
+      getStaffSummary(),
+      listStaffProfiles({ search, role, availability_status: availability }),
+      listStaffUsers()
+    ]);
+
+    setSummary(summaryData.summary);
+    setProfiles(profilesData.staff_profiles || []);
+    setStaffUsers(usersData.users || []);
+  }
+
+  useEffect(() => {
+    loadPeople().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadPeople();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingProfile(null);
+    setForm(emptyStaffProfile);
+    setQualifications([]);
+    setQualificationForm(emptyQualification);
+    setFormOpen(true);
+    setError("");
+  }
+
+  async function openEditForm(profile) {
+    setEditingProfile(profile);
+    setForm({
+      ...emptyStaffProfile,
+      ...profile,
+      user_id: profile.user_id || ""
+    });
+    setQualificationForm(emptyQualification);
+    setFormOpen(true);
+    setError("");
+
+    try {
+      const data = await listStaffQualifications(profile.id);
+      setQualifications(data.qualifications || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingProfile(null);
+    setForm(emptyStaffProfile);
+    setQualifications([]);
+    setQualificationForm(emptyQualification);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateQualificationField(field, value) {
+    setQualificationForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveProfile(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        user_id: Number(form.user_id)
+      };
+
+      if (editingProfile) {
+        await updateStaffProfile(editingProfile.id, payload);
+      } else {
+        await createStaffProfile(payload);
+      }
+
+      closeForm();
+      await loadPeople();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveQualification(event) {
+    event.preventDefault();
+
+    if (!editingProfile) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await createStaffQualification(editingProfile.id, qualificationForm);
+      setQualificationForm(emptyQualification);
+      const data = await listStaffQualifications(editingProfile.id);
+      setQualifications(data.qualifications || []);
+      await loadPeople();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Engineers", value: summary.engineers || 0 },
+    { label: "Technicians", value: summary.technicians || 0 },
+    { label: "Available", value: summary.available || 0 },
+    { label: "Unavailable", value: summary.unavailable || 0 }
+  ];
+
+  return (
+    <div className="people-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Technician and Engineer Management</p>
+          <h2>Profiles, skills and qualifications</h2>
+          <p>Track competencies, service areas, availability and expiring qualifications.</p>
+        </div>
+
+        {canEdit ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Profile
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar people-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search names, skills or service areas..." />
+        </div>
+
+        <select value={role} onChange={(event) => setRole(event.target.value)}>
+          <option value="">All roles</option>
+          <option>Engineer</option>
+          <option>Technician</option>
+          <option>Subcontractor</option>
+        </select>
+
+        <select value={availability} onChange={(event) => setAvailability(event.target.value)}>
+          <option value="">All availability</option>
+          <option>Available</option>
+          <option>Unavailable</option>
+          <option>On Leave</option>
+          <option>Training</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>People</strong>
+          <span>{profiles.length} shown</span>
+        </div>
+
+        {profiles.length ? (
+          <div className="customer-list">
+            {profiles.map((profile) => (
+              <button
+                className="customer-row people-row"
+                disabled={!canEdit}
+                key={profile.id}
+                onClick={() => {
+                  if (canEdit) {
+                    openEditForm(profile);
+                  }
+                }}
+              >
+                <div>
+                  <strong>{profile.user_name}</strong>
+                  <span>{profile.role} / {profile.job_title || "No job title"}</span>
+                </div>
+                <div>
+                  <span>{profile.availability_status}</span>
+                  <span>{profile.service_areas || "No service areas"}</span>
+                </div>
+                <div>
+                  <span>{profile.skills || "No skills recorded"}</span>
+                  <span>{profile.phone || profile.email}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${profile.expiring_qualifications ? "service-due" : "active"}`}>
+                    {profile.expiring_qualifications || 0} expiring
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No staff profiles yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveProfile}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingProfile ? "Edit Profile" : "New Profile"}</p>
+                <h2>{editingProfile ? editingProfile.user_name : "Add profile"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                User
+                <select value={form.user_id} onChange={(event) => updateField("user_id", event.target.value)} required disabled={Boolean(editingProfile)}>
+                  <option value="">Select user</option>
+                  {staffUsers.map((staffUser) => (
+                    <option key={staffUser.id} value={staffUser.id}>{staffUser.name} - {staffUser.role}</option>
+                  ))}
+                </select>
+              </label>
+
+              <Field label="Job title" value={form.job_title} onChange={(value) => updateField("job_title", value)} />
+
+              <label>
+                Employment type
+                <select value={form.employment_type} onChange={(event) => updateField("employment_type", event.target.value)}>
+                  <option>Employee</option>
+                  <option>Contractor</option>
+                  <option>Subcontractor</option>
+                  <option>Temporary</option>
+                </select>
+              </label>
+
+              <label>
+                Availability
+                <select value={form.availability_status} onChange={(event) => updateField("availability_status", event.target.value)}>
+                  <option>Available</option>
+                  <option>Unavailable</option>
+                  <option>On Leave</option>
+                  <option>Training</option>
+                </select>
+              </label>
+
+              <Field label="Phone" value={form.phone} onChange={(value) => updateField("phone", value)} />
+              <Field label="Working hours" value={form.working_hours} onChange={(value) => updateField("working_hours", value)} />
+              <Field label="Service areas" value={form.service_areas} onChange={(value) => updateField("service_areas", value)} />
+              <Field label="Skills" value={form.skills} onChange={(value) => updateField("skills", value)} />
+
+              <label className="wide-field">
+                Competency notes
+                <textarea value={form.competency_notes || ""} onChange={(event) => updateField("competency_notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            {editingProfile ? (
+              <section className="asset-history-panel">
+                <div className="table-header">
+                  <strong>Qualifications</strong>
+                  <span>{qualifications.length} records</span>
+                </div>
+
+                <div className="qualification-list">
+                  {qualifications.map((qualification) => (
+                    <div className="asset-history-row" key={qualification.id}>
+                      <div>
+                        <strong>{qualification.qualification_name}</strong>
+                        <span>{qualification.issuing_body || "No issuing body"} / {qualification.status}</span>
+                      </div>
+                      <span>{qualification.expiry_date ? `Expires ${formatDateForDisplay(qualification.expiry_date)}` : "No expiry"}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="form-grid qualification-form">
+                  <Field label="Qualification" value={qualificationForm.qualification_name} onChange={(value) => updateQualificationField("qualification_name", value)} required />
+                  <Field label="Issuing body" value={qualificationForm.issuing_body} onChange={(value) => updateQualificationField("issuing_body", value)} />
+                  <Field label="Certificate number" value={qualificationForm.certificate_number} onChange={(value) => updateQualificationField("certificate_number", value)} />
+                  <Field label="Issue date" value={qualificationForm.issue_date} onChange={(value) => updateQualificationField("issue_date", value)} type="date" />
+                  <Field label="Expiry date" value={qualificationForm.expiry_date} onChange={(value) => updateQualificationField("expiry_date", value)} type="date" />
+                  <label>
+                    Status
+                    <select value={qualificationForm.status} onChange={(event) => updateQualificationField("status", event.target.value)}>
+                      <option>Valid</option>
+                      <option>Expiring Soon</option>
+                      <option>Expired</option>
+                      <option>Suspended</option>
+                    </select>
+                  </label>
+                  <button className="secondary-button" type="button" onClick={saveQualification} disabled={busy || !qualificationForm.qualification_name}>
+                    <Plus size={16} />
+                    Add Qualification
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Profile"}
               </button>
             </div>
           </form>
