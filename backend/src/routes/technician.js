@@ -112,6 +112,22 @@ function publicJobFile(row) {
   };
 }
 
+function publicChecklistItem(row) {
+  return {
+    id: row.id,
+    work_order_id: row.work_order_id,
+    item_text: row.item_text,
+    is_completed: row.is_completed,
+    completed_at: row.completed_at,
+    completed_by: row.completed_by,
+    completed_by_name: row.completed_by_name,
+    created_by: row.created_by,
+    updated_by: row.updated_by,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
 async function canAccessJob(pool, req, id) {
   const result = await pool.query(
     "SELECT id, assigned_user_id, work_order_reference FROM work_orders WHERE id = $1 LIMIT 1",
@@ -254,6 +270,162 @@ router.get("/jobs/summary", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_VIEW),
     return res.json({
       ok: true,
       summary: result.rows[0]
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/jobs/:id/checklist", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Invalid job ID" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT woci.*, u.name AS completed_by_name
+      FROM work_order_checklist_items woci
+      LEFT JOIN users u ON u.id = woci.completed_by
+      WHERE woci.work_order_id = $1
+      ORDER BY woci.is_completed ASC, woci.created_at ASC, woci.id ASC
+      `,
+      [id]
+    );
+
+    return res.json({
+      ok: true,
+      checklist: result.rows.map(publicChecklistItem)
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/jobs/:id/checklist", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_UPDATE), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const itemText = cleanText(req.body.item_text);
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Invalid job ID" });
+    }
+
+    if (!itemText) {
+      return res.status(400).json({ ok: false, error: "Checklist item text is required" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO work_order_checklist_items (
+        work_order_id,
+        item_text,
+        created_by,
+        updated_by
+      )
+      VALUES ($1, $2, $3, $3)
+      RETURNING *
+      `,
+      [id, itemText, req.user.id]
+    );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "technician_job.checklist_item_created",
+      entityType: "work_order",
+      entityId: id,
+      metadata: {
+        work_order_reference: access.job.work_order_reference,
+        checklist_item_id: result.rows[0].id,
+        item_text: result.rows[0].item_text
+      }
+    });
+
+    return res.status(201).json({
+      ok: true,
+      checklist_item: publicChecklistItem(result.rows[0])
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.patch("/jobs/:id/checklist/:itemId", requirePermission(PERMISSIONS.TECHNICIAN_JOBS_UPDATE), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const id = cleanInteger(req.params.id);
+    const itemId = cleanInteger(req.params.itemId);
+
+    if (!id || !itemId) {
+      return res.status(400).json({ ok: false, error: "Invalid checklist request" });
+    }
+
+    const access = await canAccessJob(pool, req, id);
+
+    if (!access.ok) {
+      return res.status(access.status).json({ ok: false, error: access.error });
+    }
+
+    const existing = await pool.query(
+      "SELECT * FROM work_order_checklist_items WHERE id = $1 AND work_order_id = $2 LIMIT 1",
+      [itemId, id]
+    );
+    const current = existing.rows[0];
+
+    if (!current) {
+      return res.status(404).json({ ok: false, error: "Checklist item not found" });
+    }
+
+    const isCompleted = Boolean(req.body.is_completed);
+    const itemText = cleanText(req.body.item_text) || current.item_text;
+    const result = await pool.query(
+      `
+      UPDATE work_order_checklist_items
+      SET
+        item_text = $1,
+        is_completed = $2,
+        completed_at = CASE WHEN $2 THEN COALESCE(completed_at, NOW()) ELSE NULL END,
+        completed_by = CASE WHEN $2 THEN COALESCE(completed_by, $3) ELSE NULL END,
+        updated_by = $3,
+        updated_at = NOW()
+      WHERE id = $4 AND work_order_id = $5
+      RETURNING *
+      `,
+      [itemText, isCompleted, req.user.id, itemId, id]
+    );
+
+    await writeAuditEvent(pool, {
+      actorUserId: req.user.id,
+      action: "technician_job.checklist_item_updated",
+      entityType: "work_order",
+      entityId: id,
+      metadata: {
+        work_order_reference: access.job.work_order_reference,
+        checklist_item_id: result.rows[0].id,
+        previous_is_completed: current.is_completed,
+        is_completed: result.rows[0].is_completed
+      }
+    });
+
+    return res.json({
+      ok: true,
+      checklist_item: publicChecklistItem(result.rows[0])
     });
   } catch (err) {
     return next(err);

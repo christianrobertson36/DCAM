@@ -707,9 +707,53 @@ h1 {
   padding-top: 18px;
 }
 
+.job-checklist-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
 .job-evidence-panel .table-header {
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.job-checklist-panel .table-header {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.checklist-add-row {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  margin-top: 14px;
+}
+
+.checklist-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.checklist-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.checklist-row input {
+  width: auto;
+}
+
+.checklist-row span {
+  color: #0f172a;
+  font-weight: 800;
 }
 
 .asset-qr-panel,
@@ -873,6 +917,7 @@ h1 {
   .customer-row,
   .form-grid,
   .asset-upload-grid,
+  .checklist-add-row,
   .option-form,
   .option-row {
     grid-template-columns: 1fr;

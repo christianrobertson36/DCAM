@@ -22,6 +22,7 @@ import {
   createAssetOption,
   createBuilding,
   createCustomer,
+  createTechnicianJobChecklistItem,
   createStaffProfile,
   createStaffQualification,
   createScheduleAssignment,
@@ -47,6 +48,7 @@ import {
   listStaffProfiles,
   listStaffQualifications,
   listStaffUsers,
+  listTechnicianJobChecklist,
   listTechnicianJobFiles,
   listTechnicianJobs,
   listWorkOrders,
@@ -56,6 +58,7 @@ import {
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
+  updateTechnicianJobChecklistItem,
   updateScheduleAssignment,
   updateStaffProfile,
   updateTechnicianJob,
@@ -363,7 +366,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v20 Job Evidence Foundation</p>
+        <p className="eyebrow">v21 Job Checklist Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -453,7 +456,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v20 Job Evidence Foundation</p>
+            <p className="eyebrow">v21 Job Checklist Foundation</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -2834,6 +2837,8 @@ function TechnicianJobsPage({ user }) {
     completion_notes: ""
   });
   const [jobFiles, setJobFiles] = useState([]);
+  const [checklist, setChecklist] = useState([]);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
   const [evidenceForm, setEvidenceForm] = useState({
     file_kind: "photo",
     file: null,
@@ -2874,6 +2879,11 @@ function TechnicianJobsPage({ user }) {
     setJobFiles(data.files || []);
   }
 
+  async function loadJobChecklist(jobId) {
+    const data = await listTechnicianJobChecklist(jobId);
+    setChecklist(data.checklist || []);
+  }
+
   function openUpdateForm(job) {
     setEditingJob(job);
     setForm({
@@ -2886,9 +2896,14 @@ function TechnicianJobsPage({ user }) {
       notes: ""
     });
     setJobFiles([]);
+    setChecklist([]);
+    setNewChecklistItem("");
     setFormOpen(true);
     setError("");
-    loadJobFiles(job.id).catch((err) => setError(err.message));
+    Promise.all([
+      loadJobFiles(job.id),
+      loadJobChecklist(job.id)
+    ]).catch((err) => setError(err.message));
   }
 
   function closeForm() {
@@ -2904,6 +2919,8 @@ function TechnicianJobsPage({ user }) {
       notes: ""
     });
     setJobFiles([]);
+    setChecklist([]);
+    setNewChecklistItem("");
   }
 
   async function saveJob(event) {
@@ -2949,6 +2966,48 @@ function TechnicianJobsPage({ user }) {
       setError(err.message);
     } finally {
       setFileBusy(false);
+    }
+  }
+
+  async function addChecklistItem() {
+    if (!editingJob || !newChecklistItem.trim()) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await createTechnicianJobChecklistItem(editingJob.id, {
+        item_text: newChecklistItem
+      });
+      setNewChecklistItem("");
+      await loadJobChecklist(editingJob.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleChecklistItem(item) {
+    if (!editingJob) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await updateTechnicianJobChecklistItem(editingJob.id, item.id, {
+        item_text: item.item_text,
+        is_completed: !item.is_completed
+      });
+      await loadJobChecklist(editingJob.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -3089,6 +3148,44 @@ function TechnicianJobsPage({ user }) {
                   rows={4}
                 />
               </label>
+            </div>
+
+            <div className="job-checklist-panel">
+              <div className="table-header">
+                <strong>Job Checklist</strong>
+                <span>{checklist.filter((item) => item.is_completed).length} / {checklist.length} done</span>
+              </div>
+
+              <div className="checklist-add-row">
+                <Field
+                  label="New item"
+                  value={newChecklistItem}
+                  onChange={setNewChecklistItem}
+                  placeholder="Add a task to complete on site"
+                />
+                <button className="secondary-button" type="button" onClick={addChecklistItem} disabled={busy || !newChecklistItem.trim()}>
+                  <Plus size={16} />
+                  Add
+                </button>
+              </div>
+
+              {checklist.length ? (
+                <div className="checklist-list">
+                  {checklist.map((item) => (
+                    <label className="checklist-row" key={item.id}>
+                      <input
+                        checked={item.is_completed}
+                        onChange={() => toggleChecklistItem(item)}
+                        type="checkbox"
+                        disabled={busy}
+                      />
+                      <span>{item.item_text}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">No checklist items yet.</div>
+              )}
             </div>
 
             <div className="job-evidence-panel">

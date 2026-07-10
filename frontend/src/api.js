@@ -352,6 +352,24 @@ export async function downloadTechnicianJobFile(jobId, fileId) {
   return apiBlobRequest(`/api/technician/jobs/${jobId}/files/${fileId}/download`);
 }
 
+export async function listTechnicianJobChecklist(jobId) {
+  return apiRequest(`/api/technician/jobs/${jobId}/checklist`);
+}
+
+export async function createTechnicianJobChecklistItem(jobId, payload) {
+  return apiRequest(`/api/technician/jobs/${jobId}/checklist`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateTechnicianJobChecklistItem(jobId, itemId, payload) {
+  return apiRequest(`/api/technician/jobs/${jobId}/checklist/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getStaffSummary() {
   return apiRequest("/api/staff/summary");
 }
