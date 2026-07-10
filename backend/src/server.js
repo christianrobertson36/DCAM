@@ -12,6 +12,7 @@ const assetsRoutes = require("./routes/assets");
 const assetOptionsRoutes = require("./routes/assetOptions");
 const workOrdersRoutes = require("./routes/workOrders");
 const staffRoutes = require("./routes/staff");
+const scheduleRoutes = require("./routes/schedule");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -30,6 +31,7 @@ app.use("/api/assets", assetsRoutes);
 app.use("/api/asset-options", assetOptionsRoutes);
 app.use("/api/work-orders", workOrdersRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/schedule", scheduleRoutes);
 app.use("/api", moduleRoutes);
 
 app.use((req, res) => {

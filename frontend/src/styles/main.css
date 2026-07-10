@@ -492,6 +492,13 @@ h1 {
   margin-bottom: 18px;
 }
 
+.filter-bar label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-weight: 800;
+}
+
 .search-box {
   display: flex;
   align-items: center;
@@ -503,6 +510,7 @@ h1 {
 }
 
 .search-box input,
+.filter-bar input,
 .filter-bar select,
 .customer-form input,
 .customer-form select,
@@ -522,6 +530,7 @@ h1 {
 }
 
 .search-box input:focus,
+.filter-bar input:focus,
 .filter-bar select:focus,
 .customer-form input:focus,
 .customer-form select:focus,
@@ -883,6 +892,11 @@ h1 {
   grid-template-columns: 1fr 160px 170px auto;
 }
 
+.schedule-filter {
+  align-items: end;
+  grid-template-columns: 150px 150px minmax(220px, 1fr) 170px auto;
+}
+
 .people-filter {
   grid-template-columns: 1fr 160px 180px auto;
 }
@@ -912,6 +926,16 @@ h1 {
   color: #1d4ed8;
 }
 
+.status-badge.scheduled {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-badge.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .status-badge.on-hold {
   background: #fef3c7;
   color: #92400e;
@@ -934,6 +958,10 @@ h1 {
   content: "WO ";
 }
 
+.schedule-row strong::before {
+  content: "SCH ";
+}
+
 .people-row strong::before {
   content: "P ";
 }
@@ -954,6 +982,7 @@ h1 {
   .buildings-filter,
   .assets-filter,
   .work-orders-filter,
+  .schedule-filter,
   .people-filter {
     grid-template-columns: 1fr;
   }

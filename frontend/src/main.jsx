@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import {
   LayoutDashboard,
   Building2,
+  CalendarDays,
   Download,
   Users,
   LogOut,
@@ -22,6 +23,7 @@ import {
   createCustomer,
   createStaffProfile,
   createStaffQualification,
+  createScheduleAssignment,
   createWorkOrder,
   deleteAssetFile,
   downloadAssetFile,
@@ -29,6 +31,7 @@ import {
   getBuildingSummary,
   getCustomerSummary,
   getMe,
+  getScheduleSummary,
   getStaffSummary,
   getWorkOrderSummary,
   listAssetFiles,
@@ -37,6 +40,7 @@ import {
   listAssets,
   listBuildings,
   listCustomers,
+  listScheduleAssignments,
   listStaffProfiles,
   listStaffQualifications,
   listStaffUsers,
@@ -47,6 +51,7 @@ import {
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
+  updateScheduleAssignment,
   updateStaffProfile,
   updateWorkOrder
 } from "./api";
@@ -94,7 +99,10 @@ const PERMISSIONS = {
   WORK_ORDERS_ASSIGN: "work_orders:assign",
   STAFF_VIEW: "staff:view",
   STAFF_EDIT: "staff:edit",
-  STAFF_ADMIN: "staff:admin"
+  STAFF_ADMIN: "staff:admin",
+  SCHEDULE_VIEW: "schedule:view",
+  SCHEDULE_CREATE: "schedule:create",
+  SCHEDULE_EDIT: "schedule:edit"
 };
 
 const navItems = [
@@ -103,6 +111,7 @@ const navItems = [
   { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
+  { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN }
 ];
@@ -197,6 +206,16 @@ const emptyWorkOrder = {
   assigned_user_id: "",
   due_date: "",
   completion_notes: ""
+};
+
+const emptyScheduleAssignment = {
+  work_order_id: "",
+  assigned_user_id: "",
+  schedule_date: "",
+  start_time: "",
+  end_time: "",
+  status: "Scheduled",
+  notes: ""
 };
 
 const emptyStaffProfile = {
@@ -333,7 +352,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v7 Permissions Foundation</p>
+        <p className="eyebrow">v18 Scheduling Foundation</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -386,7 +405,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "People" || activePage === "Asset Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "People" || activePage === "Asset Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -423,7 +442,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v7 Permissions Foundation</p>
+            <p className="eyebrow">v18 Scheduling Foundation</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -443,9 +462,10 @@ function AdminShell({ user, onLogout }) {
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
+        {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "People" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "People" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -2487,6 +2507,294 @@ function WorkOrdersPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Work Order"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SchedulePage({ user }) {
+  const [assignments, setAssignments] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    today: 0,
+    overdue: 0,
+    scheduled: 0,
+    completed: 0
+  });
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState("");
+  const [status, setStatus] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState(null);
+  const [form, setForm] = useState(emptyScheduleAssignment);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.SCHEDULE_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.SCHEDULE_EDIT);
+
+  async function loadSchedule() {
+    const [summaryData, assignmentsData, workOrdersData, staffData] = await Promise.all([
+      getScheduleSummary(),
+      listScheduleAssignments({
+        date_from: dateFrom,
+        date_to: dateTo,
+        assigned_user_id: assignedUserId,
+        status
+      }),
+      listWorkOrders(),
+      listStaffUsers()
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setAssignments(assignmentsData.assignments || []);
+    setWorkOrders(workOrdersData.work_orders || []);
+    setStaffUsers(staffData.users || []);
+  }
+
+  useEffect(() => {
+    loadSchedule().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadSchedule();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingAssignment(null);
+    setForm(emptyScheduleAssignment);
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(assignment) {
+    setEditingAssignment(assignment);
+    setForm({
+      ...emptyScheduleAssignment,
+      ...assignment,
+      work_order_id: assignment.work_order_id || "",
+      assigned_user_id: assignment.assigned_user_id || "",
+      schedule_date: formatDateForInput(assignment.schedule_date),
+      start_time: assignment.start_time ? String(assignment.start_time).slice(0, 5) : "",
+      end_time: assignment.end_time ? String(assignment.end_time).slice(0, 5) : ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingAssignment(null);
+    setForm(emptyScheduleAssignment);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveAssignment(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        work_order_id: Number(form.work_order_id),
+        assigned_user_id: Number(form.assigned_user_id)
+      };
+
+      if (editingAssignment) {
+        await updateScheduleAssignment(editingAssignment.id, payload);
+      } else {
+        await createScheduleAssignment(payload);
+      }
+
+      closeForm();
+      await loadSchedule();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Today", value: summary.today || 0 },
+    { label: "Overdue", value: summary.overdue || 0 },
+    { label: "Scheduled", value: summary.scheduled || 0 },
+    { label: "Completed", value: summary.completed || 0 }
+  ];
+
+  return (
+    <div className="schedule-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Scheduling Foundation</p>
+          <h2>Job allocation calendar</h2>
+          <p>Schedule work orders to engineers, technicians and subcontractors.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Assignment
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar schedule-filter" onSubmit={handleSearch}>
+        <Field label="From" value={dateFrom} onChange={setDateFrom} type="date" />
+        <Field label="To" value={dateTo} onChange={setDateTo} type="date" />
+
+        <select value={assignedUserId} onChange={(event) => setAssignedUserId(event.target.value)}>
+          <option value="">All assigned users</option>
+          {staffUsers.map((staffUser) => (
+            <option key={staffUser.id} value={staffUser.id}>{staffUser.name} - {staffUser.role}</option>
+          ))}
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option>Scheduled</option>
+          <option>In Progress</option>
+          <option>Completed</option>
+          <option>Cancelled</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Schedule Assignments</strong>
+          <span>{assignments.length} shown</span>
+        </div>
+
+        {assignments.length ? (
+          <div className="customer-list">
+            {assignments.map((assignment) => (
+              <button
+                className="customer-row schedule-row"
+                disabled={!canEdit}
+                key={assignment.id}
+                onClick={() => {
+                  if (canEdit) {
+                    openEditForm(assignment);
+                  }
+                }}
+              >
+                <div>
+                  <strong>{assignment.work_order_title}</strong>
+                  <span>{assignment.work_order_reference}</span>
+                </div>
+                <div>
+                  <span>{assignment.assigned_user_name}</span>
+                  <span>{assignment.assigned_user_role}</span>
+                </div>
+                <div>
+                  <span>{assignment.customer_name || "No customer"}</span>
+                  <span>{assignment.building_name || "No building"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(assignment.status)}`}>{assignment.status}</span>
+                  <span>
+                    {formatDateForDisplay(assignment.schedule_date)}
+                    {assignment.start_time ? ` ${String(assignment.start_time).slice(0, 5)}` : ""}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No scheduled assignments yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveAssignment}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingAssignment ? "Edit Assignment" : "New Assignment"}</p>
+                <h2>{editingAssignment ? editingAssignment.work_order_reference : "Add schedule assignment"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Work order
+                <select value={form.work_order_id} onChange={(event) => updateField("work_order_id", event.target.value)} required>
+                  <option value="">Select work order</option>
+                  {workOrders.map((workOrder) => (
+                    <option key={workOrder.id} value={workOrder.id}>{workOrder.work_order_reference} - {workOrder.title}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Assigned user
+                <select value={form.assigned_user_id} onChange={(event) => updateField("assigned_user_id", event.target.value)} required>
+                  <option value="">Select user</option>
+                  {staffUsers.map((staffUser) => (
+                    <option key={staffUser.id} value={staffUser.id}>{staffUser.name} - {staffUser.role}</option>
+                  ))}
+                </select>
+              </label>
+
+              <Field label="Schedule date" value={form.schedule_date} onChange={(value) => updateField("schedule_date", value)} type="date" required />
+              <Field label="Start time" value={form.start_time} onChange={(value) => updateField("start_time", value)} type="time" />
+              <Field label="End time" value={form.end_time} onChange={(value) => updateField("end_time", value)} type="time" />
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Scheduled</option>
+                  <option>In Progress</option>
+                  <option>Completed</option>
+                  <option>Cancelled</option>
+                </select>
+              </label>
+
+              <label className="wide-field">
+                Notes
+                <textarea value={form.notes || ""} onChange={(event) => updateField("notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Assignment"}
               </button>
             </div>
           </form>

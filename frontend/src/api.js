@@ -282,6 +282,37 @@ export async function updateWorkOrder(id, payload) {
   });
 }
 
+export async function getScheduleSummary() {
+  return apiRequest("/api/schedule/summary");
+}
+
+export async function listScheduleAssignments(params = {}) {
+  const query = new URLSearchParams();
+
+  ["date_from", "date_to", "assigned_user_id", "status"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/schedule${suffix}`);
+}
+
+export async function createScheduleAssignment(payload) {
+  return apiRequest("/api/schedule", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateScheduleAssignment(id, payload) {
+  return apiRequest(`/api/schedule/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getStaffSummary() {
   return apiRequest("/api/staff/summary");
 }
