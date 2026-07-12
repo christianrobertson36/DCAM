@@ -93,6 +93,316 @@ function safeRemoveStorageItem(key) {
   }
 }
 
+const LANGUAGES = {
+  en: "English",
+  ro: "Romana"
+};
+
+const TRANSLATIONS = {
+  ro: {
+    "DCAM could not start": "DCAM nu a putut porni",
+    "The browser blocked part of the application startup.": "Browserul a blocat o parte din pornirea aplicatiei.",
+    "Checking DCAM session...": "Se verifica sesiunea DCAM...",
+    "v22 Job Sign-Off Foundation": "v23 Setari si limba",
+    "v23 Settings and Language": "v23 Setari si limba",
+    "Sign in to DCAM": "Autentificare in DCAM",
+    "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
+    "Email": "Email",
+    "Password": "Parola",
+    "Signing in...": "Autentificare...",
+    "Sign in": "Autentificare",
+    "Login failed": "Autentificarea a esuat",
+    "Dev admin: admin@dcam.local / ChangeMe123!": "Admin dezvoltare: admin@dcam.local / ChangeMe123!",
+    "Dashboard": "Panou",
+    "Customers": "Clienti",
+    "Buildings": "Cladiri",
+    "Assets": "Active",
+    "Work Orders": "Comenzi de lucru",
+    "Schedule": "Programare",
+    "My Jobs": "Joburile mele",
+    "People": "Personal",
+    "Asset Settings": "Setari active",
+    "Settings": "Setari",
+    "DCAM Operating System": "Sistem operational DCAM",
+    "Logout": "Iesire",
+    "Technical Compliance Platform": "Platforma de conformitate tehnica",
+    "Customers now have buildings/sites ready for assets, QR codes, jobs and compliance history.": "Clientii au acum cladiri/site-uri pregatite pentru active, coduri QR, joburi si istoric de conformitate.",
+    "DCAM now tracks both customer companies and the physical buildings or sites where compliance work happens.": "DCAM urmareste acum atat companiile client, cat si cladirile sau site-urile fizice unde se desfasoara activitatea de conformitate.",
+    "Compliance Status": "Stare conformitate",
+    "Buildings Ready": "Cladiri pregatite",
+    "Customers and buildings/sites are now connected.": "Clientii si cladirile/site-urile sunt acum conectate.",
+    "Open Work Orders": "Comenzi deschise",
+    "Work order tracking starts after assets.": "Urmarirea comenzilor incepe dupa active.",
+    "Assets Registered": "Active inregistrate",
+    "Asset register and QR codes are planned next.": "Registrul de active si codurile QR sunt planificate in continuare.",
+    "Renewals Due": "Reinnoiri scadente",
+    "Renewal automation will be added after core records.": "Automatizarea reinnoirilor va fi adaugata dupa inregistrarile principale.",
+    "CRM": "CRM",
+    "Companies, contacts, pipeline, quotes, contracts and renewals.": "Companii, contacte, pipeline, oferte, contracte si reinnoiri.",
+    "Buildings / Sites": "Cladiri / Site-uri",
+    "Customer buildings, access notes, site contacts and compliance notes.": "Cladiri client, note de acces, contacte site si note de conformitate.",
+    "Asset Management": "Management active",
+    "QR-coded assets with locations, photos, history and certificates.": "Active cu cod QR, locatii, fotografii, istoric si certificate.",
+    "CMMS": "CMMS",
+    "Preventive maintenance, reactive jobs, scheduling and work orders.": "Mentenanta preventiva, joburi reactive, programare si comenzi de lucru.",
+    "Technician App": "Aplicatie tehnician",
+    "Daily jobs, QR scanning, checklists, photos, signatures and offline sync.": "Joburi zilnice, scanare QR, liste de verificare, fotografii, semnaturi si sincronizare offline.",
+    "Automation & AI": "Automatizare si AI",
+    "Renewal reminders, report writing, quotation support and intelligent search.": "Memento-uri pentru reinnoiri, redactare rapoarte, suport oferte si cautare inteligenta.",
+    "CRM Module": "Modul CRM",
+    "Customer company records": "Inregistrari companii client",
+    "Manage the organisations DCAM will support with compliance, assets, buildings and maintenance.": "Gestionati organizatiile pe care DCAM le sustine cu conformitate, active, cladiri si mentenanta.",
+    "Add Customer": "Adauga client",
+    "Total Customers": "Total clienti",
+    "Prospects": "Prospecti",
+    "Active": "Activ",
+    "On Hold": "In asteptare",
+    "Inactive": "Inactiv",
+    "All statuses": "Toate starile",
+    "Search": "Cauta",
+    "shown": "afisate",
+    "No customers yet. Add your first customer to start building the CRM.": "Nu exista clienti inca. Adaugati primul client pentru a incepe CRM-ul.",
+    "Edit Customer": "Editare client",
+    "New Customer": "Client nou",
+    "Add customer": "Adauga client",
+    "Company name": "Nume companie",
+    "Trading name": "Nume comercial",
+    "Customer type": "Tip client",
+    "Status": "Stare",
+    "Phone": "Telefon",
+    "Website": "Website",
+    "Address line 1": "Adresa linia 1",
+    "Address line 2": "Adresa linia 2",
+    "City": "Oras",
+    "County": "Judet",
+    "Postcode": "Cod postal",
+    "Country": "Tara",
+    "Primary contact name": "Nume contact principal",
+    "Primary contact email": "Email contact principal",
+    "Primary contact phone": "Telefon contact principal",
+    "Notes": "Note",
+    "Cancel": "Anuleaza",
+    "Saving...": "Se salveaza...",
+    "Save Customer": "Salveaza client",
+    "Buildings and Sites": "Cladiri si site-uri",
+    "Customer buildings and site records": "Inregistrari cladiri si site-uri client",
+    "Manage sites, access notes, contacts and compliance notes for each customer.": "Gestionati site-uri, note de acces, contacte si note de conformitate pentru fiecare client.",
+    "Add Building": "Adauga cladire",
+    "Total Buildings": "Total cladiri",
+    "No buildings yet. Add your first building or site to continue.": "Nu exista cladiri inca. Adaugati prima cladire sau primul site pentru a continua.",
+    "Edit Building": "Editare cladire",
+    "New Building": "Cladire noua",
+    "Add building": "Adauga cladire",
+    "Building name": "Nume cladire",
+    "Building type": "Tip cladire",
+    "Access notes": "Note acces",
+    "Compliance notes": "Note conformitate",
+    "Site contact name": "Nume contact site",
+    "Site contact email": "Email contact site",
+    "Site contact phone": "Telefon contact site",
+    "Save Building": "Salveaza cladire",
+    "Asset Register": "Registru active",
+    "Assets, QR codes and lifecycle records": "Active, coduri QR si inregistrari ciclu de viata",
+    "Track customer assets by building, category, condition, status, service dates and history.": "Urmariti activele clientilor dupa cladire, categorie, conditie, stare, date service si istoric.",
+    "Add Asset": "Adauga activ",
+    "Total Assets": "Total active",
+    "Service Due": "Service scadent",
+    "Out of Service": "Scos din uz",
+    "Retired": "Retras",
+    "All categories": "Toate categoriile",
+    "All types": "Toate tipurile",
+    "All conditions": "Toate conditiile",
+    "All customers": "Toti clientii",
+    "All buildings": "Toate cladirile",
+    "No assets yet. Add the first asset to begin the register.": "Nu exista active inca. Adaugati primul activ pentru a incepe registrul.",
+    "Edit Asset": "Editare activ",
+    "New Asset": "Activ nou",
+    "Add asset": "Adauga activ",
+    "Asset reference": "Referinta activ",
+    "Asset name": "Nume activ",
+    "Asset tag": "Eticheta activ",
+    "Category": "Categorie",
+    "Type": "Tip",
+    "Condition": "Conditie",
+    "Ownership": "Proprietate",
+    "Manufacturer": "Producator",
+    "Model": "Model",
+    "Serial number": "Numar serie",
+    "Location description": "Descriere locatie",
+    "Install date": "Data instalarii",
+    "Last service date": "Ultimul service",
+    "Next service date": "Urmatorul service",
+    "Warranty provider": "Furnizor garantie",
+    "Warranty reference": "Referinta garantie",
+    "Warranty expiry": "Expirare garantie",
+    "Save Asset": "Salveaza activ",
+    "Asset QR Code": "Cod QR activ",
+    "Download QR": "Descarca QR",
+    "Asset History": "Istoric activ",
+    "Asset Files": "Fisiere activ",
+    "Upload": "Incarca",
+    "Download": "Descarca",
+    "No files uploaded yet.": "Nu exista fisiere incarcate.",
+    "No asset history yet.": "Nu exista istoric pentru activ.",
+    "CMMS Foundation": "Fundatie CMMS",
+    "Reactive and planned work orders": "Comenzi reactive si planificate",
+    "Track work by customer, building, asset, priority, status and due date.": "Urmariti lucrarile dupa client, cladire, activ, prioritate, stare si data scadenta.",
+    "Add Work Order": "Adauga comanda",
+    "Total": "Total",
+    "Open": "Deschis",
+    "In Progress": "In lucru",
+    "Completed": "Finalizat",
+    "Overdue": "Intarziat",
+    "All priorities": "Toate prioritatile",
+    "No work orders yet.": "Nu exista comenzi de lucru.",
+    "Edit Work Order": "Editare comanda",
+    "New Work Order": "Comanda noua",
+    "Add work order": "Adauga comanda",
+    "Reference": "Referinta",
+    "Title": "Titlu",
+    "Priority": "Prioritate",
+    "Due date": "Data scadenta",
+    "Customer": "Client",
+    "Building": "Cladire",
+    "Asset": "Activ",
+    "Assigned user ID": "ID utilizator alocat",
+    "Description": "Descriere",
+    "Completion notes": "Note finalizare",
+    "Save Work Order": "Salveaza comanda",
+    "Scheduling Foundation": "Fundatie programare",
+    "Job allocation calendar": "Calendar alocare joburi",
+    "Schedule work orders to engineers, technicians and subcontractors.": "Programati comenzile catre ingineri, tehnicieni si subcontractori.",
+    "Add Assignment": "Adauga alocare",
+    "Today": "Azi",
+    "Scheduled": "Programat",
+    "From": "De la",
+    "To": "Pana la",
+    "Schedule Assignments": "Alocari programare",
+    "No scheduled assignments yet.": "Nu exista alocari programate.",
+    "Edit Assignment": "Editare alocare",
+    "New Assignment": "Alocare noua",
+    "Add schedule assignment": "Adauga alocare programare",
+    "Work order": "Comanda de lucru",
+    "Assigned user": "Utilizator alocat",
+    "Schedule date": "Data programarii",
+    "Start time": "Ora inceput",
+    "End time": "Ora final",
+    "Save Assignment": "Salveaza alocare",
+    "Technician App Foundation": "Fundatie aplicatie tehnician",
+    "Assigned jobs": "Joburi alocate",
+    "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
+    "Assigned": "Alocat",
+    "No assigned jobs yet.": "Nu exista joburi alocate.",
+    "Update Job": "Actualizeaza job",
+    "Job Checklist": "Lista verificare job",
+    "New item": "Element nou",
+    "Add": "Adauga",
+    "No checklist items yet.": "Nu exista elemente in lista.",
+    "Job Evidence": "Dovezi job",
+    "Kind": "Tip",
+    "File": "Fisier",
+    "Photo": "Fotografie",
+    "Document": "Document",
+    "No evidence uploaded yet.": "Nu exista dovezi incarcate.",
+    "Job Sign-Off": "Semnare job",
+    "Signer name": "Nume semnatar",
+    "Signer role": "Rol semnatar",
+    "Signature": "Semnatura",
+    "Add Sign-Off": "Adauga semnare",
+    "No sign-off captured yet.": "Nu exista semnare capturata.",
+    "Save Job": "Salveaza job",
+    "Technician and Engineer Management": "Management tehnicieni si ingineri",
+    "Profiles, skills and qualifications": "Profiluri, competente si calificari",
+    "Track competencies, service areas, availability and expiring qualifications.": "Urmariti competentele, zonele de service, disponibilitatea si calificarile care expira.",
+    "Add Profile": "Adauga profil",
+    "Engineers": "Ingineri",
+    "Technicians": "Tehnicieni",
+    "Available": "Disponibil",
+    "Unavailable": "Indisponibil",
+    "All roles": "Toate rolurile",
+    "No profiles yet.": "Nu exista profiluri.",
+    "Edit Profile": "Editare profil",
+    "New Profile": "Profil nou",
+    "Job title": "Functie",
+    "Employment type": "Tip angajare",
+    "Skills": "Competente",
+    "Service areas": "Zone service",
+    "Working hours": "Program de lucru",
+    "Availability": "Disponibilitate",
+    "Competency notes": "Note competente",
+    "Save Profile": "Salveaza profil",
+    "Qualifications": "Calificari",
+    "Qualification": "Calificare",
+    "Issuing body": "Emitent",
+    "Certificate number": "Numar certificat",
+    "Issue date": "Data emiterii",
+    "Expiry date": "Data expirarii",
+    "Add Qualification": "Adauga calificare",
+    "Asset Administration": "Administrare active",
+    "Asset categories, types, statuses and conditions": "Categorii, tipuri, stari si conditii active",
+    "Manage the option lists used by the Asset Register.": "Gestionati listele de optiuni folosite de Registrul de active.",
+    "Categories": "Categorii",
+    "Types": "Tipuri",
+    "Statuses": "Stari",
+    "Conditions": "Conditii",
+    "New option": "Optiune noua",
+    "Sort order": "Ordine sortare",
+    "Add Option": "Adauga optiune",
+    "Application Settings": "Setari aplicatie",
+    "Language and local display preferences": "Limba si preferinte locale de afisare",
+    "Choose the language used for menus, pages, buttons and forms.": "Alegeti limba folosita pentru meniuri, pagini, butoane si formulare.",
+    "Language": "Limba",
+    "English": "Engleza",
+    "Romanian": "Romana",
+    "Save Settings": "Salveaza setarile",
+    "Settings saved on this device.": "Setarile au fost salvate pe acest dispozitiv."
+  }
+};
+
+function translateText(value, language) {
+  if (language === "en") {
+    const reverse = Object.entries(TRANSLATIONS.ro).find((entry) => entry[1] === value);
+    return reverse ? reverse[0] : value;
+  }
+
+  return TRANSLATIONS[language]?.[value] || value;
+}
+
+function translateDocument(language) {
+  const translateNodeText = (node) => {
+    const value = node.nodeValue;
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    const translated = translateText(trimmed, language);
+
+    if (translated !== trimmed) {
+      node.nodeValue = value.replace(trimmed, translated);
+    }
+  };
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+
+  while (walker.nextNode()) {
+    const parentName = walker.currentNode.parentElement?.tagName;
+
+    if (parentName !== "OPTION" && parentName !== "SCRIPT" && parentName !== "STYLE") {
+      nodes.push(walker.currentNode);
+    }
+  }
+
+  nodes.forEach(translateNodeText);
+
+  document.querySelectorAll("input[placeholder], textarea[placeholder]").forEach((element) => {
+    const placeholder = element.getAttribute("placeholder");
+    element.setAttribute("placeholder", translateText(placeholder, language));
+  });
+}
+
 const PERMISSIONS = {
   DASHBOARD_VIEW: "dashboard:view",
   CUSTOMERS_VIEW: "customers:view",
@@ -129,7 +439,8 @@ const navItems = [
   { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
-  { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN }
+  { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
+  { label: "Settings", icon: SlidersHorizontal, permission: PERMISSIONS.DASHBOARD_VIEW }
 ];
 
 const emptyCustomer = {
@@ -296,6 +607,7 @@ class AppErrorBoundary extends React.Component {
 function App() {
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [language, setLanguage] = useState(() => safeGetStorageItem("dcam_language") || "en");
 
   useEffect(() => {
     const token = safeGetStorageItem("dcam_token");
@@ -313,6 +625,23 @@ function App() {
       })
       .finally(() => setCheckingSession(false));
   }, []);
+
+  useEffect(() => {
+    safeSetStorageItem("dcam_language", language);
+    document.documentElement.lang = language;
+    translateDocument(language);
+
+    const observer = new MutationObserver(() => {
+      translateDocument(language);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    return () => observer.disconnect();
+  }, [language]);
 
   function handleLoginSuccess(data) {
     safeSetStorageItem("dcam_token", data.token);
@@ -334,13 +663,13 @@ function App() {
   }
 
   if (!user) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen language={language} onLanguageChange={setLanguage} onLoginSuccess={handleLoginSuccess} />;
   }
 
-  return <AdminShell user={user} onLogout={handleLogout} />;
+  return <AdminShell language={language} onLanguageChange={setLanguage} user={user} onLogout={handleLogout} />;
 }
 
-function LoginScreen({ onLoginSuccess }) {
+function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
   const [email, setEmail] = useState("admin@dcam.local");
   const [password, setPassword] = useState("ChangeMe123!");
   const [error, setError] = useState("");
@@ -368,7 +697,7 @@ function LoginScreen({ onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v22 Job Sign-Off Foundation</p>
+        <p className="eyebrow">v23 Settings and Language</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -403,12 +732,20 @@ function LoginScreen({ onLoginSuccess }) {
         <div className="dev-note">
           Dev admin: admin@dcam.local / ChangeMe123!
         </div>
+
+        <label>
+          Language
+          <select value={language} onChange={(event) => onLanguageChange(event.target.value)}>
+            <option value="en">English</option>
+            <option value="ro">Romanian</option>
+          </select>
+        </label>
       </form>
     </div>
   );
 }
 
-function AdminShell({ user, onLogout }) {
+function AdminShell({ language, onLanguageChange, user, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
   const visibleNavItems = useMemo(
     () => navItems.filter((item) => hasPermission(user, item.permission)),
@@ -421,7 +758,7 @@ function AdminShell({ user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -458,7 +795,7 @@ function AdminShell({ user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v22 Job Sign-Off Foundation</p>
+            <p className="eyebrow">v23 Settings and Language</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -482,7 +819,8 @@ function AdminShell({ user, onLogout }) {
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" ? <DashboardPage /> : null}
+        {activePage === "Settings" ? <SettingsPage language={language} onLanguageChange={onLanguageChange} /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -3367,6 +3705,54 @@ function TechnicianJobsPage({ user }) {
           </form>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function SettingsPage({ language, onLanguageChange }) {
+  const [saved, setSaved] = useState(false);
+
+  function saveSettings(event) {
+    event.preventDefault();
+    safeSetStorageItem("dcam_language", language);
+    setSaved(true);
+  }
+
+  return (
+    <div className="settings-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Application Settings</p>
+          <h2>Language and local display preferences</h2>
+          <p>Choose the language used for menus, pages, buttons and forms.</p>
+        </div>
+      </section>
+
+      <section className="table-card settings-card">
+        <form className="customer-form settings-form" onSubmit={saveSettings}>
+          <div className="form-grid">
+            <label>
+              Language
+              <select value={language} onChange={(event) => {
+                onLanguageChange(event.target.value);
+                setSaved(false);
+              }}>
+                <option value="en">English</option>
+                <option value="ro">Romanian</option>
+              </select>
+            </label>
+          </div>
+
+          {saved ? <div className="settings-success">Settings saved on this device.</div> : null}
+
+          <div className="form-actions">
+            <button className="primary-action" type="submit">
+              <Save size={18} />
+              Save Settings
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }

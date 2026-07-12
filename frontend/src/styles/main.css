@@ -297,7 +297,8 @@ h1 {
   margin-bottom: 16px;
 }
 
-.login-card input {
+.login-card input,
+.login-card select {
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   padding: 13px 14px;
@@ -306,7 +307,8 @@ h1 {
   background: #ffffff;
 }
 
-.login-card input:focus {
+.login-card input:focus,
+.login-card select:focus {
   outline: 3px solid rgba(37, 99, 235, 0.18);
   border-color: #2563eb;
 }
@@ -902,6 +904,27 @@ h1 {
 .settings-layout {
   display: grid;
   gap: 18px;
+}
+
+.settings-card {
+  padding: 18px;
+}
+
+.settings-form {
+  box-shadow: none;
+  max-height: none;
+  padding: 0;
+  width: 100%;
+}
+
+.settings-success {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  color: #166534;
+  font-weight: 900;
+  margin-top: 16px;
+  padding: 12px;
 }
 
 .settings-tabs {
