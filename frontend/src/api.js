@@ -426,3 +426,19 @@ export async function createStaffQualification(profileId, payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function getSampleDataStatus() {
+  return apiRequest("/api/settings/sample-data");
+}
+
+export async function installSampleData() {
+  return apiRequest("/api/settings/sample-data", {
+    method: "POST"
+  });
+}
+
+export async function deleteSampleData() {
+  return apiRequest("/api/settings/sample-data", {
+    method: "DELETE"
+  });
+}

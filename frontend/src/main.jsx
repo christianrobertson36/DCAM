@@ -29,16 +29,19 @@ import {
   createScheduleAssignment,
   createWorkOrder,
   deleteAssetFile,
+  deleteSampleData,
   downloadAssetFile,
   downloadTechnicianJobFile,
   getAssetSummary,
   getBuildingSummary,
   getCustomerSummary,
   getMe,
+  getSampleDataStatus,
   getScheduleSummary,
   getStaffSummary,
   getTechnicianJobSummary,
   getWorkOrderSummary,
+  installSampleData,
   listAssetFiles,
   listAssetHistory,
   listAssetOptions,
@@ -105,6 +108,7 @@ const TRANSLATIONS = {
     "Checking DCAM session...": "Se verifica sesiunea DCAM...",
     "v22 Job Sign-Off Foundation": "v23 Setari si limba",
     "v23 Settings and Language": "v23 Setari si limba",
+    "v24 Sample Data Controls": "v24 Control date exemplu",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -355,7 +359,17 @@ const TRANSLATIONS = {
     "English": "Engleza",
     "Romanian": "Romana",
     "Save Settings": "Salveaza setarile",
-    "Settings saved on this device.": "Setarile au fost salvate pe acest dispozitiv."
+    "Settings saved on this device.": "Setarile au fost salvate pe acest dispozitiv.",
+    "Sample Data": "Date exemplu",
+    "Install demo records across customers, buildings, assets, work orders, schedule, people and technician jobs.": "Instalati inregistrari demo pentru clienti, cladiri, active, comenzi de lucru, programare, personal si joburi tehnicieni.",
+    "Installed": "Instalat",
+    "Not installed": "Neinstalat",
+    "Checklists": "Liste verificare",
+    "Sign-Offs": "Semnari",
+    "Working...": "Se lucreaza...",
+    "Install Sample Data": "Instaleaza date exemplu",
+    "I understand this deletes only installed sample data.": "Inteleg ca se sterg doar datele exemplu instalate.",
+    "Delete Sample Data": "Sterge datele exemplu"
   }
 };
 
@@ -427,7 +441,8 @@ const PERMISSIONS = {
   SCHEDULE_EDIT: "schedule:edit",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
-  TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage"
+  TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
+  SETTINGS_ADMIN: "settings:admin"
 };
 
 const navItems = [
@@ -697,7 +712,7 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v23 Settings and Language</p>
+        <p className="eyebrow">v24 Sample Data Controls</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -795,7 +810,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v23 Settings and Language</p>
+            <p className="eyebrow">v24 Sample Data Controls</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -819,7 +834,13 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
-        {activePage === "Settings" ? <SettingsPage language={language} onLanguageChange={onLanguageChange} /> : null}
+        {activePage === "Settings" ? (
+          <SettingsPage
+            language={language}
+            onLanguageChange={onLanguageChange}
+            user={user}
+          />
+        ) : null}
         {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
@@ -3709,13 +3730,65 @@ function TechnicianJobsPage({ user }) {
   );
 }
 
-function SettingsPage({ language, onLanguageChange }) {
+function SettingsPage({ language, onLanguageChange, user }) {
   const [saved, setSaved] = useState(false);
+  const [sampleStatus, setSampleStatus] = useState(null);
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [sampleError, setSampleError] = useState("");
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const canAdminSettings = hasPermission(user, PERMISSIONS.SETTINGS_ADMIN);
+
+  async function loadSampleStatus() {
+    if (!canAdminSettings) {
+      return;
+    }
+
+    const data = await getSampleDataStatus();
+    setSampleStatus(data.sample_data);
+  }
+
+  useEffect(() => {
+    loadSampleStatus().catch((err) => setSampleError(err.message));
+  }, [canAdminSettings]);
 
   function saveSettings(event) {
     event.preventDefault();
     safeSetStorageItem("dcam_language", language);
     setSaved(true);
+  }
+
+  async function handleInstallSampleData() {
+    setSampleBusy(true);
+    setSampleError("");
+
+    try {
+      const data = await installSampleData();
+      setSampleStatus(data.sample_data);
+      setDeleteConfirmed(false);
+    } catch (err) {
+      setSampleError(err.message);
+    } finally {
+      setSampleBusy(false);
+    }
+  }
+
+  async function handleDeleteSampleData() {
+    if (!deleteConfirmed) {
+      return;
+    }
+
+    setSampleBusy(true);
+    setSampleError("");
+
+    try {
+      const data = await deleteSampleData();
+      setSampleStatus(data.sample_data);
+      setDeleteConfirmed(false);
+    } catch (err) {
+      setSampleError(err.message);
+    } finally {
+      setSampleBusy(false);
+    }
   }
 
   return (
@@ -3753,6 +3826,73 @@ function SettingsPage({ language, onLanguageChange }) {
           </div>
         </form>
       </section>
+
+      {canAdminSettings ? (
+        <section className="table-card settings-card">
+          <div className="settings-tool-header">
+            <div>
+              <h3>Sample Data</h3>
+              <p>Install demo records across customers, buildings, assets, work orders, schedule, people and technician jobs.</p>
+            </div>
+            <span className={sampleStatus?.installed ? "status-pill active" : "status-pill"}>
+              {sampleStatus?.installed ? "Installed" : "Not installed"}
+            </span>
+          </div>
+
+          <div className="settings-summary-grid">
+            {[
+              { label: "Customers", value: sampleStatus?.counts?.customers || 0 },
+              { label: "Buildings", value: sampleStatus?.counts?.buildings || 0 },
+              { label: "Assets", value: sampleStatus?.counts?.assets || 0 },
+              { label: "Work Orders", value: sampleStatus?.counts?.work_orders || 0 },
+              { label: "Schedule", value: sampleStatus?.counts?.schedule_assignments || 0 },
+              { label: "People", value: sampleStatus?.counts?.staff_profiles || 0 },
+              { label: "Checklists", value: sampleStatus?.counts?.checklist_items || 0 },
+              { label: "Sign-Offs", value: sampleStatus?.counts?.signatures || 0 }
+            ].map((card) => (
+              <article className="mini-card" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </article>
+            ))}
+          </div>
+
+          {sampleError ? <div className="form-error">{sampleError}</div> : null}
+
+          <div className="settings-actions">
+            <button
+              className="primary-action"
+              type="button"
+              onClick={handleInstallSampleData}
+              disabled={sampleBusy || sampleStatus?.installed}
+            >
+              <Plus size={18} />
+              {sampleBusy ? "Working..." : "Install Sample Data"}
+            </button>
+          </div>
+
+          <div className="danger-zone">
+            <label className="toggle-row">
+              <input
+                type="checkbox"
+                checked={deleteConfirmed}
+                onChange={(event) => setDeleteConfirmed(event.target.checked)}
+                disabled={!sampleStatus?.installed || sampleBusy}
+              />
+              I understand this deletes only installed sample data.
+            </label>
+            <button
+              className="danger-button"
+              type="button"
+              onClick={handleDeleteSampleData}
+              disabled={!sampleStatus?.installed || !deleteConfirmed || sampleBusy}
+            >
+              <Trash2 size={18} />
+              {sampleBusy ? "Working..." : "Delete Sample Data"}
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

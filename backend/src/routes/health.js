@@ -7,7 +7,7 @@ router.get("/health", (req, res) => {
     ok: true,
     app: "DCAM API",
     name: "Digital Compliance & Asset Management",
-    version: "v23",
+    version: "v24",
     status: "healthy",
     auth: "login-roles-permissions-foundation",
     crm: "customers-foundation",
@@ -20,7 +20,7 @@ router.get("/health", (req, res) => {
     job_evidence: "technician-job-evidence-foundation",
     job_checklists: "technician-job-checklist-foundation",
     job_signoff: "technician-job-signoff-foundation",
-    settings: "settings-language-foundation",
+    settings: "settings-language-sample-data-foundation",
     audit: "audit-events-foundation",
     modules: [
       "CRM",
