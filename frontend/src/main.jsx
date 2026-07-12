@@ -22,6 +22,7 @@ import {
   createAssetOption,
   createBuilding,
   createCustomer,
+  createMaintenancePlan,
   createTechnicianJobSignature,
   createTechnicianJobChecklistItem,
   createStaffProfile,
@@ -35,6 +36,7 @@ import {
   getAssetSummary,
   getBuildingSummary,
   getCustomerSummary,
+  getMaintenancePlanSummary,
   getMe,
   getSampleDataStatus,
   getScheduleSummary,
@@ -43,6 +45,7 @@ import {
   getWorkOrderSummary,
   installSampleData,
   listRecordHistory,
+  listMaintenancePlans,
   listAssetFiles,
   listAssetHistory,
   listAssetOptions,
@@ -64,6 +67,7 @@ import {
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
+  updateMaintenancePlan,
   updateTechnicianJobChecklistItem,
   updateScheduleAssignment,
   updateStaffProfile,
@@ -112,6 +116,7 @@ const TRANSLATIONS = {
     "v24 Sample Data Controls": "v24 Control date exemplu",
     "v25 Sample Data Hotfix": "v25 Remediere date exemplu",
     "v26 Record Edit History": "v26 Istoric editare inregistrari",
+    "v27 Planned Maintenance": "v27 Mentenanta planificata",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -126,6 +131,7 @@ const TRANSLATIONS = {
     "Assets": "Active",
     "Work Orders": "Comenzi de lucru",
     "Schedule": "Programare",
+    "Maintenance Plans": "Planuri de mentenanta",
     "My Jobs": "Joburile mele",
     "People": "Personal",
     "Asset Settings": "Setari active",
@@ -296,6 +302,31 @@ const TRANSLATIONS = {
     "Start time": "Ora inceput",
     "End time": "Ora final",
     "Save Assignment": "Salveaza alocare",
+    "Planned Preventive Maintenance": "Mentenanta preventiva planificata",
+    "Recurring maintenance plans": "Planuri recurente de mentenanta",
+    "Manage planned maintenance by customer, site, asset, frequency and next due date.": "Gestionati mentenanta planificata dupa client, site, activ, frecventa si urmatoarea data scadenta.",
+    "Add Plan": "Adauga plan",
+    "Due Soon": "Scadent curand",
+    "Paused": "Pauzat",
+    "All frequencies": "Toate frecventele",
+    "Weekly": "Saptamanal",
+    "Monthly": "Lunar",
+    "Quarterly": "Trimestrial",
+    "Six Monthly": "La sase luni",
+    "Annual": "Anual",
+    "No maintenance plans yet.": "Nu exista planuri de mentenanta.",
+    "Edit Plan": "Editare plan",
+    "New Plan": "Plan nou",
+    "Add maintenance plan": "Adauga plan de mentenanta",
+    "Plan reference": "Referinta plan",
+    "Plan type": "Tip plan",
+    "Frequency": "Frecventa",
+    "Start date": "Data inceput",
+    "Next due date": "Urmatoarea data scadenta",
+    "Last generated date": "Ultima data generata",
+    "Estimated duration minutes": "Durata estimata minute",
+    "Instructions": "Instructiuni",
+    "Save Plan": "Salveaza planul",
     "Technician App Foundation": "Fundatie aplicatie tehnician",
     "Assigned jobs": "Joburi alocate",
     "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
@@ -449,6 +480,9 @@ const PERMISSIONS = {
   SCHEDULE_VIEW: "schedule:view",
   SCHEDULE_CREATE: "schedule:create",
   SCHEDULE_EDIT: "schedule:edit",
+  MAINTENANCE_PLANS_VIEW: "maintenance_plans:view",
+  MAINTENANCE_PLANS_CREATE: "maintenance_plans:create",
+  MAINTENANCE_PLANS_EDIT: "maintenance_plans:edit",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
@@ -462,6 +496,7 @@ const navItems = [
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
   { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
+  { label: "Maintenance Plans", icon: CalendarDays, permission: PERMISSIONS.MAINTENANCE_PLANS_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
@@ -567,6 +602,25 @@ const emptyScheduleAssignment = {
   start_time: "",
   end_time: "",
   status: "Scheduled",
+  notes: ""
+};
+
+const emptyMaintenancePlan = {
+  plan_reference: "",
+  title: "",
+  plan_type: "Planned Maintenance",
+  status: "Active",
+  frequency: "Monthly",
+  priority: "Normal",
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  assigned_user_id: "",
+  start_date: "",
+  next_due_date: "",
+  last_generated_date: "",
+  estimated_duration_minutes: "",
+  instructions: "",
   notes: ""
 };
 
@@ -783,7 +837,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -820,7 +874,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v26 Record Edit History</p>
+            <p className="eyebrow">v27 Planned Maintenance</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -841,6 +895,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
         {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
+        {activePage === "Maintenance Plans" ? <MaintenancePlansPage user={user} /> : null}
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
@@ -851,7 +906,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -3211,6 +3266,380 @@ function SchedulePage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Assignment"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MaintenancePlansPage({ user }) {
+  const [plans, setPlans] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    overdue: 0,
+    due_soon: 0,
+    paused: 0,
+    retired: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [form, setForm] = useState(emptyMaintenancePlan);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.MAINTENANCE_PLANS_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.MAINTENANCE_PLANS_EDIT);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewBuildings = hasPermission(user, PERMISSIONS.BUILDINGS_VIEW);
+  const canViewAssets = hasPermission(user, PERMISSIONS.ASSETS_VIEW);
+  const canViewStaff = hasPermission(user, PERMISSIONS.STAFF_VIEW);
+
+  async function loadPlans() {
+    const [summaryData, plansData, customersData, buildingsData, assetsData, staffData] = await Promise.all([
+      getMaintenancePlanSummary(),
+      listMaintenancePlans({ search, status, frequency }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] }),
+      canViewBuildings ? listBuildings() : Promise.resolve({ buildings: [] }),
+      canViewAssets ? listAssets() : Promise.resolve({ assets: [] }),
+      canViewStaff ? listStaffUsers() : Promise.resolve({ users: [] })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setPlans(plansData.maintenance_plans || []);
+    setCustomers(customersData.customers || []);
+    setBuildings(buildingsData.buildings || []);
+    setAssets(assetsData.assets || []);
+    setStaffUsers(staffData.users || []);
+  }
+
+  useEffect(() => {
+    loadPlans().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadPlans();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingPlan(null);
+    setForm({
+      ...emptyMaintenancePlan,
+      customer_id: customers[0]?.id || "",
+      building_id: buildings[0]?.id || "",
+      asset_id: "",
+      assigned_user_id: ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(plan) {
+    setEditingPlan(plan);
+    setForm({
+      ...emptyMaintenancePlan,
+      ...plan,
+      customer_id: plan.customer_id || "",
+      building_id: plan.building_id || "",
+      asset_id: plan.asset_id || "",
+      assigned_user_id: plan.assigned_user_id || "",
+      start_date: formatDateForInput(plan.start_date),
+      next_due_date: formatDateForInput(plan.next_due_date),
+      last_generated_date: formatDateForInput(plan.last_generated_date),
+      estimated_duration_minutes: plan.estimated_duration_minutes || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingPlan(null);
+    setForm(emptyMaintenancePlan);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function savePlan(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: form.customer_id ? Number(form.customer_id) : null,
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        assigned_user_id: form.assigned_user_id ? Number(form.assigned_user_id) : null,
+        estimated_duration_minutes: form.estimated_duration_minutes ? Number(form.estimated_duration_minutes) : null
+      };
+
+      if (editingPlan) {
+        await updateMaintenancePlan(editingPlan.id, payload);
+      } else {
+        await createMaintenancePlan(payload);
+      }
+
+      closeForm();
+      await loadPlans();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Active", value: summary.active || 0 },
+    { label: "Overdue", value: summary.overdue || 0 },
+    { label: "Due Soon", value: summary.due_soon || 0 },
+    { label: "Paused", value: summary.paused || 0 },
+    { label: "Retired", value: summary.retired || 0 }
+  ];
+
+  return (
+    <div className="maintenance-plans-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Planned Preventive Maintenance</p>
+          <h2>Recurring maintenance plans</h2>
+          <p>Manage planned maintenance by customer, site, asset, frequency and next due date.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Plan
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar work-orders-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search maintenance plans, customers, buildings or assets..."
+          />
+        </div>
+
+        <select value={frequency} onChange={(event) => setFrequency(event.target.value)}>
+          <option value="">All frequencies</option>
+          <option>Weekly</option>
+          <option>Monthly</option>
+          <option>Quarterly</option>
+          <option>Six Monthly</option>
+          <option>Annual</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option>Active</option>
+          <option>Paused</option>
+          <option>Retired</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Maintenance Plans</strong>
+          <span>{plans.length} shown</span>
+        </div>
+
+        {plans.length ? (
+          <div className="customer-list">
+            {plans.map((plan) => (
+              <div className="customer-row maintenance-plan-row" key={plan.id}>
+                <div>
+                  <strong>{plan.title}</strong>
+                  <span>{plan.plan_reference}</span>
+                </div>
+                <div>
+                  <span>{plan.frequency} / {plan.priority}</span>
+                  <span>{plan.asset_reference || plan.asset_name || "No asset"}</span>
+                </div>
+                <div>
+                  <span>{plan.customer_name || "No customer"}</span>
+                  <span>{plan.building_name || "No building"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(plan.status)}`}>{plan.status}</span>
+                  <span>{plan.next_due_date ? `Next: ${formatDateForDisplay(plan.next_due_date)}` : "No due date"}</span>
+                </div>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(plan)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No maintenance plans yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={savePlan}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingPlan ? "Edit Plan" : "New Plan"}</p>
+                <h2>{editingPlan ? editingPlan.plan_reference : "Add maintenance plan"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <Field label="Plan reference" value={form.plan_reference} onChange={(value) => updateField("plan_reference", value)} placeholder={editingPlan ? "" : "Auto-generated if blank"} />
+              <Field label="Title" value={form.title} onChange={(value) => updateField("title", value)} required />
+
+              <label>
+                Plan type
+                <select value={form.plan_type} onChange={(event) => updateField("plan_type", event.target.value)}>
+                  <option>Planned Maintenance</option>
+                  <option>Inspection</option>
+                  <option>Service</option>
+                  <option>Compliance Check</option>
+                </select>
+              </label>
+
+              <label>
+                Frequency
+                <select value={form.frequency} onChange={(event) => updateField("frequency", event.target.value)}>
+                  <option>Weekly</option>
+                  <option>Monthly</option>
+                  <option>Quarterly</option>
+                  <option>Six Monthly</option>
+                  <option>Annual</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Active</option>
+                  <option>Paused</option>
+                  <option>Retired</option>
+                </select>
+              </label>
+
+              <label>
+                Priority
+                <select value={form.priority} onChange={(event) => updateField("priority", event.target.value)}>
+                  <option>Low</option>
+                  <option>Normal</option>
+                  <option>High</option>
+                  <option>Urgent</option>
+                </select>
+              </label>
+
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)}>
+                  <option value="">No customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>{customer.company_name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Building
+                <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)}>
+                  <option value="">No building</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>{building.name} - {building.customer_name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Asset
+                <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)}>
+                  <option value="">No asset</option>
+                  {assets.map((asset) => (
+                    <option key={asset.id} value={asset.id}>{asset.asset_reference} - {asset.asset_name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Assigned user
+                <select value={form.assigned_user_id} onChange={(event) => updateField("assigned_user_id", event.target.value)}>
+                  <option value="">Unassigned</option>
+                  {staffUsers.map((staffUser) => (
+                    <option key={staffUser.id} value={staffUser.id}>{staffUser.name} - {staffUser.role}</option>
+                  ))}
+                </select>
+              </label>
+
+              <Field label="Start date" value={form.start_date} onChange={(value) => updateField("start_date", value)} type="date" />
+              <Field label="Next due date" value={form.next_due_date} onChange={(value) => updateField("next_due_date", value)} type="date" />
+              <Field label="Last generated date" value={form.last_generated_date} onChange={(value) => updateField("last_generated_date", value)} type="date" />
+              <Field label="Estimated duration minutes" value={form.estimated_duration_minutes} onChange={(value) => updateField("estimated_duration_minutes", value)} type="number" />
+
+              <label className="wide-field">
+                Instructions
+                <textarea value={form.instructions || ""} onChange={(event) => updateField("instructions", event.target.value)} rows={4} />
+              </label>
+
+              <label className="wide-field">
+                Notes
+                <textarea value={form.notes || ""} onChange={(event) => updateField("notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            {editingPlan ? (
+              <RecordHistoryPanel entityType="maintenance_plan" entityId={editingPlan.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Plan"}
               </button>
             </div>
           </form>

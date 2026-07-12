@@ -12,6 +12,7 @@ const ENTITY_PERMISSIONS = Object.freeze({
   asset: PERMISSIONS.ASSETS_VIEW,
   work_order: PERMISSIONS.WORK_ORDERS_VIEW,
   schedule_assignment: PERMISSIONS.SCHEDULE_VIEW,
+  maintenance_plan: PERMISSIONS.MAINTENANCE_PLANS_VIEW,
   staff_profile: PERMISSIONS.STAFF_VIEW,
   staff_qualification: PERMISSIONS.STAFF_VIEW,
   asset_option: PERMISSIONS.ASSETS_ADMIN,

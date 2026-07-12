@@ -313,6 +313,37 @@ export async function updateScheduleAssignment(id, payload) {
   });
 }
 
+export async function getMaintenancePlanSummary() {
+  return apiRequest("/api/maintenance-plans/summary");
+}
+
+export async function listMaintenancePlans(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "frequency", "customer_id", "building_id", "asset_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/maintenance-plans${suffix}`);
+}
+
+export async function createMaintenancePlan(payload) {
+  return apiRequest("/api/maintenance-plans", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateMaintenancePlan(id, payload) {
+  return apiRequest(`/api/maintenance-plans/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getTechnicianJobSummary() {
   return apiRequest("/api/technician/jobs/summary");
 }
