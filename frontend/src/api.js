@@ -344,6 +344,37 @@ export async function updateMaintenancePlan(id, payload) {
   });
 }
 
+export async function getComplianceServiceSummary() {
+  return apiRequest("/api/compliance-services/summary");
+}
+
+export async function listComplianceServices(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "service_type", "result_status", "customer_id", "building_id", "asset_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/compliance-services${suffix}`);
+}
+
+export async function createComplianceService(payload) {
+  return apiRequest("/api/compliance-services", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateComplianceService(id, payload) {
+  return apiRequest(`/api/compliance-services/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getTechnicianJobSummary() {
   return apiRequest("/api/technician/jobs/summary");
 }

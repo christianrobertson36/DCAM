@@ -21,6 +21,7 @@ import {
   createAsset,
   createAssetOption,
   createBuilding,
+  createComplianceService,
   createCustomer,
   createMaintenancePlan,
   createTechnicianJobSignature,
@@ -35,6 +36,7 @@ import {
   downloadTechnicianJobFile,
   getAssetSummary,
   getBuildingSummary,
+  getComplianceServiceSummary,
   getCustomerSummary,
   getMaintenancePlanSummary,
   getMe,
@@ -51,6 +53,7 @@ import {
   listAssetOptions,
   listAssets,
   listBuildings,
+  listComplianceServices,
   listCustomers,
   listScheduleAssignments,
   listStaffProfiles,
@@ -64,6 +67,7 @@ import {
   login,
   updateAsset,
   updateAssetOption,
+  updateComplianceService,
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
@@ -117,6 +121,7 @@ const TRANSLATIONS = {
     "v25 Sample Data Hotfix": "v25 Remediere date exemplu",
     "v26 Record Edit History": "v26 Istoric editare inregistrari",
     "v27 Planned Maintenance": "v27 Mentenanta planificata",
+    "v28 Compliance Services": "v28 Servicii conformitate",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -132,6 +137,7 @@ const TRANSLATIONS = {
     "Work Orders": "Comenzi de lucru",
     "Schedule": "Programare",
     "Maintenance Plans": "Planuri de mentenanta",
+    "Compliance Services": "Servicii conformitate",
     "My Jobs": "Joburile mele",
     "People": "Personal",
     "Asset Settings": "Setari active",
@@ -327,6 +333,40 @@ const TRANSLATIONS = {
     "Estimated duration minutes": "Durata estimata minute",
     "Instructions": "Instructiuni",
     "Save Plan": "Salveaza planul",
+    "Compliance Service Modules": "Module servicii conformitate",
+    "Inspection, testing and audit services": "Servicii inspectie, testare si audit",
+    "Track PAT testing, fire inspections, electrical compliance and technical audits.": "Urmariti testarea PAT, inspectii incendiu, conformitate electrica si audituri tehnice.",
+    "Add Service": "Adauga serviciu",
+    "Passed": "Trecut",
+    "Failed": "Esuat",
+    "Defects": "Defecte",
+    "Approved": "Aprobat",
+    "All service types": "Toate tipurile de servicii",
+    "All results": "Toate rezultatele",
+    "PAT Testing": "Testare PAT",
+    "Fire Door Inspection": "Inspectie usi antifoc",
+    "Fire Damper Testing": "Testare clapete antifoc",
+    "Electrical Compliance": "Conformitate electrica",
+    "Technical Compliance Audit": "Audit conformitate tehnica",
+    "General Building Maintenance": "Mentenanta generala cladire",
+    "No compliance services yet.": "Nu exista servicii de conformitate.",
+    "Edit Service": "Editare serviciu",
+    "New Service": "Serviciu nou",
+    "Add compliance service": "Adauga serviciu conformitate",
+    "Service reference": "Referinta serviciu",
+    "Service name": "Nume serviciu",
+    "Service type": "Tip serviciu",
+    "Result": "Rezultat",
+    "Risk rating": "Rating risc",
+    "Scheduled date": "Data programata",
+    "Completed date": "Data finalizarii",
+    "Certificate required": "Certificat necesar",
+    "Certificate status": "Stare certificat",
+    "Report status": "Stare raport",
+    "Findings": "Constatari",
+    "Corrective actions": "Actiuni corective",
+    "Defects found": "Defecte gasite",
+    "Save Service": "Salveaza serviciul",
     "Technician App Foundation": "Fundatie aplicatie tehnician",
     "Assigned jobs": "Joburi alocate",
     "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
@@ -483,6 +523,10 @@ const PERMISSIONS = {
   MAINTENANCE_PLANS_VIEW: "maintenance_plans:view",
   MAINTENANCE_PLANS_CREATE: "maintenance_plans:create",
   MAINTENANCE_PLANS_EDIT: "maintenance_plans:edit",
+  COMPLIANCE_SERVICES_VIEW: "compliance_services:view",
+  COMPLIANCE_SERVICES_CREATE: "compliance_services:create",
+  COMPLIANCE_SERVICES_EDIT: "compliance_services:edit",
+  COMPLIANCE_SERVICES_APPROVE: "compliance_services:approve",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
@@ -497,6 +541,7 @@ const navItems = [
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
   { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
   { label: "Maintenance Plans", icon: CalendarDays, permission: PERMISSIONS.MAINTENANCE_PLANS_VIEW },
+  { label: "Compliance Services", icon: ClipboardCheck, permission: PERMISSIONS.COMPLIANCE_SERVICES_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
@@ -621,6 +666,30 @@ const emptyMaintenancePlan = {
   last_generated_date: "",
   estimated_duration_minutes: "",
   instructions: "",
+  notes: ""
+};
+
+const emptyComplianceService = {
+  service_reference: "",
+  service_name: "",
+  service_type: "Technical Compliance Audit",
+  status: "Planned",
+  priority: "Normal",
+  result_status: "Not Started",
+  risk_rating: "Unrated",
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  work_order_id: "",
+  assigned_user_id: "",
+  scheduled_date: "",
+  completed_date: "",
+  defects_found: false,
+  certificate_required: true,
+  certificate_status: "Not Required",
+  report_status: "Draft",
+  findings: "",
+  corrective_actions: "",
   notes: ""
 };
 
@@ -837,7 +906,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -874,7 +943,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v27 Planned Maintenance</p>
+            <p className="eyebrow">v28 Compliance Services</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -896,6 +965,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
         {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
         {activePage === "Maintenance Plans" ? <MaintenancePlansPage user={user} /> : null}
+        {activePage === "Compliance Services" ? <ComplianceServicesPage user={user} /> : null}
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
@@ -906,7 +976,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -3640,6 +3710,440 @@ function MaintenancePlansPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Plan"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ComplianceServicesPage({ user }) {
+  const [services, setServices] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    planned: 0,
+    in_progress: 0,
+    passed: 0,
+    failed: 0,
+    defects: 0,
+    approved: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [serviceType, setServiceType] = useState("");
+  const [resultStatus, setResultStatus] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingService, setEditingService] = useState(null);
+  const [form, setForm] = useState(emptyComplianceService);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.COMPLIANCE_SERVICES_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.COMPLIANCE_SERVICES_EDIT);
+  const canApprove = hasPermission(user, PERMISSIONS.COMPLIANCE_SERVICES_APPROVE);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewBuildings = hasPermission(user, PERMISSIONS.BUILDINGS_VIEW);
+  const canViewAssets = hasPermission(user, PERMISSIONS.ASSETS_VIEW);
+  const canViewWorkOrders = hasPermission(user, PERMISSIONS.WORK_ORDERS_VIEW);
+  const canViewStaff = hasPermission(user, PERMISSIONS.STAFF_VIEW);
+
+  async function loadServices() {
+    const [summaryData, servicesData, customersData, buildingsData, assetsData, workOrdersData, staffData] = await Promise.all([
+      getComplianceServiceSummary(),
+      listComplianceServices({ search, status, service_type: serviceType, result_status: resultStatus }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] }),
+      canViewBuildings ? listBuildings() : Promise.resolve({ buildings: [] }),
+      canViewAssets ? listAssets() : Promise.resolve({ assets: [] }),
+      canViewWorkOrders ? listWorkOrders() : Promise.resolve({ work_orders: [] }),
+      canViewStaff ? listStaffUsers() : Promise.resolve({ users: [] })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setServices(servicesData.compliance_services || []);
+    setCustomers(customersData.customers || []);
+    setBuildings(buildingsData.buildings || []);
+    setAssets(assetsData.assets || []);
+    setWorkOrders(workOrdersData.work_orders || []);
+    setStaffUsers(staffData.users || []);
+  }
+
+  useEffect(() => {
+    loadServices().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadServices();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingService(null);
+    setForm({
+      ...emptyComplianceService,
+      customer_id: customers[0]?.id || "",
+      building_id: buildings[0]?.id || "",
+      asset_id: "",
+      work_order_id: "",
+      assigned_user_id: ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(service) {
+    setEditingService(service);
+    setForm({
+      ...emptyComplianceService,
+      ...service,
+      customer_id: service.customer_id || "",
+      building_id: service.building_id || "",
+      asset_id: service.asset_id || "",
+      work_order_id: service.work_order_id || "",
+      assigned_user_id: service.assigned_user_id || "",
+      scheduled_date: formatDateForInput(service.scheduled_date),
+      completed_date: formatDateForInput(service.completed_date)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingService(null);
+    setForm(emptyComplianceService);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveService(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: form.customer_id ? Number(form.customer_id) : null,
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        work_order_id: form.work_order_id ? Number(form.work_order_id) : null,
+        assigned_user_id: form.assigned_user_id ? Number(form.assigned_user_id) : null
+      };
+
+      if (editingService) {
+        await updateComplianceService(editingService.id, payload);
+      } else {
+        await createComplianceService(payload);
+      }
+
+      closeForm();
+      await loadServices();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Planned", value: summary.planned || 0 },
+    { label: "In Progress", value: summary.in_progress || 0 },
+    { label: "Passed", value: summary.passed || 0 },
+    { label: "Failed", value: summary.failed || 0 },
+    { label: "Defects", value: summary.defects || 0 },
+    { label: "Approved", value: summary.approved || 0 }
+  ];
+
+  return (
+    <div className="compliance-services-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Compliance Service Modules</p>
+          <h2>Inspection, testing and audit services</h2>
+          <p>Track PAT testing, fire inspections, electrical compliance and technical audits.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Service
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search compliance services, customers, buildings or assets..." />
+        </div>
+
+        <select value={serviceType} onChange={(event) => setServiceType(event.target.value)}>
+          <option value="">All service types</option>
+          <option>PAT Testing</option>
+          <option>Fire Door Inspection</option>
+          <option>Fire Damper Testing</option>
+          <option>Electrical Compliance</option>
+          <option>Technical Compliance Audit</option>
+          <option>General Building Maintenance</option>
+        </select>
+
+        <select value={resultStatus} onChange={(event) => setResultStatus(event.target.value)}>
+          <option value="">All results</option>
+          <option>Not Started</option>
+          <option>Pass</option>
+          <option>Fail</option>
+          <option>Advisory</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option>Planned</option>
+          <option>In Progress</option>
+          <option>Completed</option>
+          <option>Cancelled</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Compliance Services</strong>
+          <span>{services.length} shown</span>
+        </div>
+
+        {services.length ? (
+          <div className="customer-list">
+            {services.map((service) => (
+              <div className="customer-row compliance-service-row" key={service.id}>
+                <div>
+                  <strong>{service.service_name}</strong>
+                  <span>{service.service_reference}</span>
+                </div>
+                <div>
+                  <span>{service.service_type}</span>
+                  <span>{service.result_status} / {service.risk_rating}</span>
+                </div>
+                <div>
+                  <span>{service.customer_name || "No customer"}</span>
+                  <span>{service.building_name || service.asset_reference || "No site or asset"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(service.status)}`}>{service.status}</span>
+                  <span>{service.scheduled_date ? `Scheduled: ${formatDateForDisplay(service.scheduled_date)}` : "No date"}</span>
+                </div>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(service)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No compliance services yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveService}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingService ? "Edit Service" : "New Service"}</p>
+                <h2>{editingService ? editingService.service_reference : "Add compliance service"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <Field label="Service reference" value={form.service_reference} onChange={(value) => updateField("service_reference", value)} placeholder={editingService ? "" : "Auto-generated if blank"} />
+              <Field label="Service name" value={form.service_name} onChange={(value) => updateField("service_name", value)} required />
+
+              <label>
+                Service type
+                <select value={form.service_type} onChange={(event) => updateField("service_type", event.target.value)}>
+                  <option>PAT Testing</option>
+                  <option>Fire Door Inspection</option>
+                  <option>Fire Damper Testing</option>
+                  <option>Electrical Compliance</option>
+                  <option>Technical Compliance Audit</option>
+                  <option>General Building Maintenance</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Planned</option>
+                  <option>In Progress</option>
+                  <option>Completed</option>
+                  <option>Cancelled</option>
+                </select>
+              </label>
+
+              <label>
+                Priority
+                <select value={form.priority} onChange={(event) => updateField("priority", event.target.value)}>
+                  <option>Low</option>
+                  <option>Normal</option>
+                  <option>High</option>
+                  <option>Urgent</option>
+                </select>
+              </label>
+
+              <label>
+                Result
+                <select value={form.result_status} onChange={(event) => updateField("result_status", event.target.value)}>
+                  <option>Not Started</option>
+                  <option>Pass</option>
+                  <option>Fail</option>
+                  <option>Advisory</option>
+                </select>
+              </label>
+
+              <label>
+                Risk rating
+                <select value={form.risk_rating} onChange={(event) => updateField("risk_rating", event.target.value)}>
+                  <option>Unrated</option>
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                  <option>Critical</option>
+                </select>
+              </label>
+
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)}>
+                  <option value="">No customer</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Building
+                <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)}>
+                  <option value="">No building</option>
+                  {buildings.map((building) => <option key={building.id} value={building.id}>{building.name} - {building.customer_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Asset
+                <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)}>
+                  <option value="">No asset</option>
+                  {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_reference} - {asset.asset_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Work order
+                <select value={form.work_order_id} onChange={(event) => updateField("work_order_id", event.target.value)}>
+                  <option value="">No work order</option>
+                  {workOrders.map((workOrder) => <option key={workOrder.id} value={workOrder.id}>{workOrder.work_order_reference} - {workOrder.title}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Assigned user
+                <select value={form.assigned_user_id} onChange={(event) => updateField("assigned_user_id", event.target.value)}>
+                  <option value="">Unassigned</option>
+                  {staffUsers.map((staffUser) => <option key={staffUser.id} value={staffUser.id}>{staffUser.name} - {staffUser.role}</option>)}
+                </select>
+              </label>
+
+              <Field label="Scheduled date" value={form.scheduled_date} onChange={(value) => updateField("scheduled_date", value)} type="date" />
+              <Field label="Completed date" value={form.completed_date} onChange={(value) => updateField("completed_date", value)} type="date" />
+
+              <label>
+                Certificate status
+                <select value={form.certificate_status} onChange={(event) => updateField("certificate_status", event.target.value)}>
+                  <option>Not Required</option>
+                  <option>Required</option>
+                  <option>Draft</option>
+                  <option>Issued</option>
+                </select>
+              </label>
+
+              <label>
+                Report status
+                <select value={form.report_status} onChange={(event) => updateField("report_status", event.target.value)} disabled={!canApprove && form.report_status === "Approved"}>
+                  <option>Draft</option>
+                  <option>Ready for Review</option>
+                  {canApprove ? <option>Approved</option> : null}
+                  <option>Issued</option>
+                </select>
+              </label>
+
+              <label className="inline-toggle">
+                <input type="checkbox" checked={form.defects_found} onChange={(event) => updateField("defects_found", event.target.checked)} />
+                Defects found
+              </label>
+
+              <label className="inline-toggle">
+                <input type="checkbox" checked={form.certificate_required} onChange={(event) => updateField("certificate_required", event.target.checked)} />
+                Certificate required
+              </label>
+
+              <label className="wide-field">
+                Findings
+                <textarea value={form.findings || ""} onChange={(event) => updateField("findings", event.target.value)} rows={4} />
+              </label>
+
+              <label className="wide-field">
+                Corrective actions
+                <textarea value={form.corrective_actions || ""} onChange={(event) => updateField("corrective_actions", event.target.value)} rows={3} />
+              </label>
+
+              <label className="wide-field">
+                Notes
+                <textarea value={form.notes || ""} onChange={(event) => updateField("notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            {editingService ? (
+              <RecordHistoryPanel entityType="compliance_service" entityId={editingService.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Service"}
               </button>
             </div>
           </form>

@@ -17,6 +17,7 @@ const technicianRoutes = require("./routes/technician");
 const settingsRoutes = require("./routes/settings");
 const auditRoutes = require("./routes/audit");
 const maintenancePlansRoutes = require("./routes/maintenancePlans");
+const complianceServicesRoutes = require("./routes/complianceServices");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/work-orders", workOrdersRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/maintenance-plans", maintenancePlansRoutes);
+app.use("/api/compliance-services", complianceServicesRoutes);
 app.use("/api/technician", technicianRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/audit", auditRoutes);
