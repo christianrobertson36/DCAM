@@ -442,3 +442,7 @@ export async function deleteSampleData() {
     method: "DELETE"
   });
 }
+
+export async function listRecordHistory(entityType, entityId) {
+  return apiRequest(`/api/audit/${entityType}/${entityId}`);
+}

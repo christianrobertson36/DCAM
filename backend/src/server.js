@@ -15,6 +15,7 @@ const staffRoutes = require("./routes/staff");
 const scheduleRoutes = require("./routes/schedule");
 const technicianRoutes = require("./routes/technician");
 const settingsRoutes = require("./routes/settings");
+const auditRoutes = require("./routes/audit");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -36,6 +37,7 @@ app.use("/api/staff", staffRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/technician", technicianRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/audit", auditRoutes);
 app.use("/api", moduleRoutes);
 
 app.use((req, res) => {

@@ -42,6 +42,7 @@ import {
   getTechnicianJobSummary,
   getWorkOrderSummary,
   installSampleData,
+  listRecordHistory,
   listAssetFiles,
   listAssetHistory,
   listAssetOptions,
@@ -110,6 +111,7 @@ const TRANSLATIONS = {
     "v23 Settings and Language": "v23 Setari si limba",
     "v24 Sample Data Controls": "v24 Control date exemplu",
     "v25 Sample Data Hotfix": "v25 Remediere date exemplu",
+    "v26 Record Edit History": "v26 Istoric editare inregistrari",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -187,6 +189,7 @@ const TRANSLATIONS = {
     "Primary contact phone": "Telefon contact principal",
     "Notes": "Note",
     "Cancel": "Anuleaza",
+    "Edit": "Editeaza",
     "Saving...": "Se salveaza...",
     "Save Customer": "Salveaza client",
     "Buildings and Sites": "Cladiri si site-uri",
@@ -371,6 +374,12 @@ const TRANSLATIONS = {
     "Install Sample Data": "Instaleaza date exemplu",
     "I understand this deletes only installed sample data.": "Inteleg ca se sterg doar datele exemplu instalate.",
     "Delete Sample Data": "Sterge datele exemplu"
+    ,
+    "Update History": "Istoric actualizari",
+    "events": "evenimente",
+    "Loading history...": "Se incarca istoricul...",
+    "No update history has been recorded yet.": "Nu exista istoric de actualizari inca.",
+    "System": "Sistem"
   }
 };
 
@@ -713,7 +722,7 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v25 Sample Data Hotfix</p>
+        <p className="eyebrow">v26 Record Edit History</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -811,7 +820,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v25 Sample Data Hotfix</p>
+            <p className="eyebrow">v26 Record Edit History</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -1074,15 +1083,9 @@ function CustomersPage({ user }) {
         {customers.length ? (
           <div className="customer-list">
             {customers.map((customer) => (
-              <button
+              <div
                 className="customer-row"
                 key={customer.id}
-                onClick={() => {
-                  if (canEditCustomer) {
-                    openEditForm(customer);
-                  }
-                }}
-                disabled={!canEditCustomer}
               >
                 <div>
                   <strong>{customer.company_name}</strong>
@@ -1101,7 +1104,14 @@ function CustomersPage({ user }) {
                     {customer.status}
                   </span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canEditCustomer ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(customer)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -1173,6 +1183,10 @@ function CustomersPage({ user }) {
                 />
               </label>
             </div>
+
+            {editingCustomer ? (
+              <RecordHistoryPanel entityType="customer" entityId={editingCustomer.id} />
+            ) : null}
 
             <div className="form-actions">
               <button className="secondary-button" type="button" onClick={closeForm}>
@@ -1394,15 +1408,9 @@ function BuildingsPage({ user }) {
         {buildings.length ? (
           <div className="customer-list">
             {buildings.map((building) => (
-              <button
+              <div
                 className="customer-row building-row"
                 key={building.id}
-                onClick={() => {
-                  if (canEditBuilding) {
-                    openEditForm(building);
-                  }
-                }}
-                disabled={!canEditBuilding}
               >
                 <div>
                   <strong>{building.name}</strong>
@@ -1421,7 +1429,14 @@ function BuildingsPage({ user }) {
                     {building.status}
                   </span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canEditBuilding ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(building)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -1519,6 +1534,10 @@ function BuildingsPage({ user }) {
                 />
               </label>
             </div>
+
+            {editingBuilding ? (
+              <RecordHistoryPanel entityType="building" entityId={editingBuilding.id} />
+            ) : null}
 
             <div className="form-actions">
               <button className="secondary-button" type="button" onClick={closeForm}>
@@ -1915,15 +1934,9 @@ function AssetsPage({ user }) {
         {assets.length ? (
           <div className="customer-list">
             {assets.map((asset) => (
-              <button
+              <div
                 className="customer-row asset-row"
                 key={asset.id}
-                onClick={() => {
-                  if (canEditAsset) {
-                    openEditForm(asset);
-                  }
-                }}
-                disabled={!canEditAsset}
               >
                 <div>
                   <strong>{asset.asset_name}</strong>
@@ -1943,7 +1956,14 @@ function AssetsPage({ user }) {
                   </span>
                   <span>{asset.warranty_expiry ? `Warranty: ${formatDateForDisplay(asset.warranty_expiry)}` : asset.next_service_date ? `Next: ${formatDateForDisplay(asset.next_service_date)}` : "No date"}</span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canEditAsset ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(asset)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -2148,6 +2168,10 @@ function AssetsPage({ user }) {
                   </div>
                 )}
               </section>
+            ) : null}
+
+            {editingAsset ? (
+              <RecordHistoryPanel entityType="asset" entityId={editingAsset.id} />
             ) : null}
 
             {editingAsset ? (
@@ -2404,15 +2428,9 @@ function PeoplePage({ user }) {
         {profiles.length ? (
           <div className="customer-list">
             {profiles.map((profile) => (
-              <button
+              <div
                 className="customer-row people-row"
-                disabled={!canEdit}
                 key={profile.id}
-                onClick={() => {
-                  if (canEdit) {
-                    openEditForm(profile);
-                  }
-                }}
               >
                 <div>
                   <strong>{profile.user_name}</strong>
@@ -2431,7 +2449,14 @@ function PeoplePage({ user }) {
                     {profile.expiring_qualifications || 0} expiring
                   </span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(profile)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -2495,6 +2520,10 @@ function PeoplePage({ user }) {
                 <textarea value={form.competency_notes || ""} onChange={(event) => updateField("competency_notes", event.target.value)} rows={3} />
               </label>
             </div>
+
+            {editingProfile ? (
+              <RecordHistoryPanel entityType="staff_profile" entityId={editingProfile.id} />
+            ) : null}
 
             {editingProfile ? (
               <section className="asset-history-panel">
@@ -2750,15 +2779,9 @@ function WorkOrdersPage({ user }) {
         {workOrders.length ? (
           <div className="customer-list">
             {workOrders.map((workOrder) => (
-              <button
+              <div
                 className="customer-row work-order-row"
-                disabled={!canEdit}
                 key={workOrder.id}
-                onClick={() => {
-                  if (canEdit) {
-                    openEditForm(workOrder);
-                  }
-                }}
               >
                 <div>
                   <strong>{workOrder.title}</strong>
@@ -2776,7 +2799,14 @@ function WorkOrdersPage({ user }) {
                   <span className={`status-badge ${statusClassName(workOrder.status)}`}>{workOrder.status}</span>
                   <span>{workOrder.due_date ? `Due: ${formatDateForDisplay(workOrder.due_date)}` : "No due date"}</span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(workOrder)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -2878,6 +2908,10 @@ function WorkOrdersPage({ user }) {
                 <textarea value={form.completion_notes || ""} onChange={(event) => updateField("completion_notes", event.target.value)} rows={3} />
               </label>
             </div>
+
+            {editingWorkOrder ? (
+              <RecordHistoryPanel entityType="work_order" entityId={editingWorkOrder.id} />
+            ) : null}
 
             <div className="form-actions">
               <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
@@ -3076,15 +3110,9 @@ function SchedulePage({ user }) {
         {assignments.length ? (
           <div className="customer-list">
             {assignments.map((assignment) => (
-              <button
+              <div
                 className="customer-row schedule-row"
-                disabled={!canEdit}
                 key={assignment.id}
-                onClick={() => {
-                  if (canEdit) {
-                    openEditForm(assignment);
-                  }
-                }}
               >
                 <div>
                   <strong>{assignment.work_order_title}</strong>
@@ -3105,7 +3133,14 @@ function SchedulePage({ user }) {
                     {assignment.start_time ? ` ${String(assignment.start_time).slice(0, 5)}` : ""}
                   </span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(assignment)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -3166,6 +3201,10 @@ function SchedulePage({ user }) {
                 <textarea value={form.notes || ""} onChange={(event) => updateField("notes", event.target.value)} rows={3} />
               </label>
             </div>
+
+            {editingAssignment ? (
+              <RecordHistoryPanel entityType="schedule_assignment" entityId={editingAssignment.id} />
+            ) : null}
 
             <div className="form-actions">
               <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
@@ -3493,15 +3532,9 @@ function TechnicianJobsPage({ user }) {
         {jobs.length ? (
           <div className="customer-list">
             {jobs.map((job) => (
-              <button
+              <div
                 className="customer-row technician-job-row"
-                disabled={!canUpdate}
                 key={job.id}
-                onClick={() => {
-                  if (canUpdate) {
-                    openUpdateForm(job);
-                  }
-                }}
               >
                 <div>
                   <strong>{job.title}</strong>
@@ -3521,7 +3554,14 @@ function TechnicianJobsPage({ user }) {
                     {job.next_schedule_date ? `Scheduled: ${formatDateForDisplay(job.next_schedule_date)}` : job.due_date ? `Due: ${formatDateForDisplay(job.due_date)}` : "No date"}
                   </span>
                 </div>
-              </button>
+                <div className="row-actions">
+                  {canUpdate ? (
+                    <button className="secondary-button" type="button" onClick={() => openUpdateForm(job)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -3562,6 +3602,10 @@ function TechnicianJobsPage({ user }) {
                 />
               </label>
             </div>
+
+            {editingJob ? (
+              <RecordHistoryPanel entityType="work_order" entityId={editingJob.id} />
+            ) : null}
 
             <div className="job-checklist-panel">
               <div className="table-header">
@@ -4098,6 +4142,101 @@ function fileToBase64(file) {
     reader.onerror = () => reject(new Error("Could not read file"));
     reader.readAsDataURL(file);
   });
+}
+
+function formatHistoryAction(action) {
+  return String(action || "Record updated").split(".").map((part) => (
+    part.charAt(0).toUpperCase() + part.slice(1)
+  )).join(" ");
+}
+
+function formatHistoryMetadata(metadata) {
+  const value = metadata && typeof metadata === "object" ? metadata : {};
+  const entries = Object.entries(value).filter(([, entryValue]) => (
+    entryValue !== undefined && entryValue !== null && entryValue !== ""
+  ));
+
+  if (!entries.length) {
+    return "";
+  }
+
+  return entries.slice(0, 4).map(([key, entryValue]) => (
+    `${key.split("_").join(" ")}: ${entryValue}`
+  )).join(" / ");
+}
+
+function RecordHistoryPanel({ entityType, entityId }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!entityType || !entityId) {
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+    setError("");
+
+    listRecordHistory(entityType, entityId)
+      .then((data) => {
+        if (active) {
+          setHistory(data.history || []);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [entityType, entityId]);
+
+  if (!entityId) {
+    return null;
+  }
+
+  return (
+    <section className="record-history-panel">
+      <div className="table-header">
+        <strong>Update History</strong>
+        <span>{history.length} events</span>
+      </div>
+
+      {loading ? <div className="empty-state">Loading history...</div> : null}
+      {error ? <div className="form-error">{error}</div> : null}
+
+      {!loading && !error ? (
+        history.length ? (
+          <div className="record-history-list">
+            {history.map((event) => (
+              <div className="record-history-row" key={event.id}>
+                <div>
+                  <strong>{formatHistoryAction(event.action)}</strong>
+                  <span>{formatDateForDisplay(event.created_at)}</span>
+                </div>
+                <div>
+                  <span>{event.actor_name || event.actor_email || "System"}</span>
+                  <span>{formatHistoryMetadata(event.metadata)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No update history has been recorded yet.</div>
+        )
+      ) : null}
+    </section>
+  );
 }
 
 function Field({ label, value, onChange, required, type = "text", placeholder = "" }) {
