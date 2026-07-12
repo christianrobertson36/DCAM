@@ -21,6 +21,7 @@ import {
   createAsset,
   createAssetOption,
   createBuilding,
+  createCertificate,
   createComplianceService,
   createCustomer,
   createFormTemplate,
@@ -36,9 +37,11 @@ import {
   deleteSampleData,
   downloadAssetFile,
   exportReport,
+  exportCertificate,
   downloadTechnicianJobFile,
   getAssetSummary,
   getBuildingSummary,
+  getCertificateSummary,
   getComplianceServiceSummary,
   getCustomerSummary,
   getFormTemplateSummary,
@@ -58,6 +61,7 @@ import {
   listAssetOptions,
   listAssets,
   listBuildings,
+  listCertificates,
   listComplianceServices,
   listCustomers,
   listFormTemplates,
@@ -74,6 +78,7 @@ import {
   login,
   updateAsset,
   updateAssetOption,
+  updateCertificate,
   updateComplianceService,
   updateFormTemplate,
   updateReport,
@@ -133,6 +138,7 @@ const TRANSLATIONS = {
     "v28 Compliance Services": "v28 Servicii conformitate",
     "v29 Forms Builder": "v29 Constructor formulare",
     "v30 Reports": "v30 Rapoarte",
+    "v31 Certificates": "v31 Certificate",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -151,6 +157,7 @@ const TRANSLATIONS = {
     "Compliance Services": "Servicii conformitate",
     "Forms Builder": "Constructor formulare",
     "Reports": "Rapoarte",
+    "Certificates": "Certificate",
     "My Jobs": "Joburile mele",
     "People": "Personal",
     "Asset Settings": "Setari active",
@@ -425,6 +432,30 @@ const TRANSLATIONS = {
     "Recommendations": "Recomandari",
     "Save Report": "Salveaza raportul",
     "Export": "Exporta",
+    "Certificates Foundation": "Fundatie certificate",
+    "Controlled compliance certificates": "Certificate de conformitate controlate",
+    "Create, issue, revoke and export certificates linked to services, reports, assets and customers.": "Creati, emiteti, revocati si exportati certificate legate de servicii, rapoarte, active si clienti.",
+    "Add Certificate": "Adauga certificat",
+    "Revoked": "Revocat",
+    "Expired": "Expirat",
+    "Expiring Soon": "Expira curand",
+    "All certificate types": "Toate tipurile de certificat",
+    "All certificates": "Toate certificatele",
+    "Compliance Certificate": "Certificat conformitate",
+    "Inspection Certificate": "Certificat inspectie",
+    "Test Certificate": "Certificat test",
+    "Completion Certificate": "Certificat finalizare",
+    "Safety Certificate": "Certificat siguranta",
+    "No certificates yet.": "Nu exista certificate.",
+    "Edit Certificate": "Editare certificat",
+    "New Certificate": "Certificat nou",
+    "Add certificate": "Adauga certificat",
+    "Certificate reference": "Referinta certificat",
+    "Certificate title": "Titlu certificat",
+    "Certificate type": "Tip certificat",
+    "Certificate body": "Continut certificat",
+    "Revocation reason": "Motiv revocare",
+    "Save Certificate": "Salveaza certificatul",
     "Technician App Foundation": "Fundatie aplicatie tehnician",
     "Assigned jobs": "Joburi alocate",
     "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
@@ -594,6 +625,12 @@ const PERMISSIONS = {
   REPORTS_EDIT: "reports:edit",
   REPORTS_APPROVE: "reports:approve",
   REPORTS_EXPORT: "reports:export",
+  CERTIFICATES_VIEW: "certificates:view",
+  CERTIFICATES_CREATE: "certificates:create",
+  CERTIFICATES_EDIT: "certificates:edit",
+  CERTIFICATES_ISSUE: "certificates:issue",
+  CERTIFICATES_REVOKE: "certificates:revoke",
+  CERTIFICATES_EXPORT: "certificates:export",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
@@ -611,6 +648,7 @@ const navItems = [
   { label: "Compliance Services", icon: ClipboardCheck, permission: PERMISSIONS.COMPLIANCE_SERVICES_VIEW },
   { label: "Forms Builder", icon: ClipboardCheck, permission: PERMISSIONS.FORM_TEMPLATES_VIEW },
   { label: "Reports", icon: Download, permission: PERMISSIONS.REPORTS_VIEW },
+  { label: "Certificates", icon: Download, permission: PERMISSIONS.CERTIFICATES_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
@@ -803,6 +841,22 @@ const emptyReport = {
   summary: "",
   findings: "",
   recommendations: ""
+};
+
+const emptyCertificate = {
+  certificate_reference: "",
+  certificate_title: "",
+  certificate_type: "Compliance Certificate",
+  status: "Draft",
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  compliance_service_id: "",
+  report_id: "",
+  issue_date: "",
+  expiry_date: "",
+  certificate_body: "",
+  revocation_reason: ""
 };
 
 const emptyStaffProfile = {
@@ -1018,7 +1072,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -1055,7 +1109,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v30 Reports</p>
+            <p className="eyebrow">v31 Certificates</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -1080,6 +1134,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Compliance Services" ? <ComplianceServicesPage user={user} /> : null}
         {activePage === "Forms Builder" ? <FormTemplatesPage user={user} /> : null}
         {activePage === "Reports" ? <ReportsPage user={user} /> : null}
+        {activePage === "Certificates" ? <CertificatesPage user={user} /> : null}
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
@@ -1090,7 +1145,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -4946,6 +5001,388 @@ function ReportsPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Report"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CertificatesPage({ user }) {
+  const [certificates, setCertificates] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [services, setServices] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    draft: 0,
+    issued: 0,
+    revoked: 0,
+    expired: 0,
+    expiring_soon: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [certificateType, setCertificateType] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingCertificate, setEditingCertificate] = useState(null);
+  const [form, setForm] = useState(emptyCertificate);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.CERTIFICATES_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.CERTIFICATES_EDIT);
+  const canIssue = hasPermission(user, PERMISSIONS.CERTIFICATES_ISSUE);
+  const canRevoke = hasPermission(user, PERMISSIONS.CERTIFICATES_REVOKE);
+  const canExport = hasPermission(user, PERMISSIONS.CERTIFICATES_EXPORT);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewBuildings = hasPermission(user, PERMISSIONS.BUILDINGS_VIEW);
+  const canViewAssets = hasPermission(user, PERMISSIONS.ASSETS_VIEW);
+  const canViewServices = hasPermission(user, PERMISSIONS.COMPLIANCE_SERVICES_VIEW);
+  const canViewReports = hasPermission(user, PERMISSIONS.REPORTS_VIEW);
+
+  async function loadCertificates() {
+    const [summaryData, certificatesData, customersData, buildingsData, assetsData, servicesData, reportsData] = await Promise.all([
+      getCertificateSummary(),
+      listCertificates({ search, status, certificate_type: certificateType, customer_id: customerId }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] }),
+      canViewBuildings ? listBuildings() : Promise.resolve({ buildings: [] }),
+      canViewAssets ? listAssets() : Promise.resolve({ assets: [] }),
+      canViewServices ? listComplianceServices() : Promise.resolve({ compliance_services: [] }),
+      canViewReports ? listReports() : Promise.resolve({ reports: [] })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setCertificates(certificatesData.certificates || []);
+    setCustomers(customersData.customers || []);
+    setBuildings(buildingsData.buildings || []);
+    setAssets(assetsData.assets || []);
+    setServices(servicesData.compliance_services || []);
+    setReports(reportsData.reports || []);
+  }
+
+  useEffect(() => {
+    loadCertificates().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadCertificates();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingCertificate(null);
+    setForm({
+      ...emptyCertificate,
+      customer_id: customers[0]?.id || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(certificate) {
+    setEditingCertificate(certificate);
+    setForm({
+      ...emptyCertificate,
+      ...certificate,
+      customer_id: certificate.customer_id || "",
+      building_id: certificate.building_id || "",
+      asset_id: certificate.asset_id || "",
+      compliance_service_id: certificate.compliance_service_id || "",
+      report_id: certificate.report_id || "",
+      issue_date: formatDateForInput(certificate.issue_date),
+      expiry_date: formatDateForInput(certificate.expiry_date)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingCertificate(null);
+    setForm(emptyCertificate);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveCertificate(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: form.customer_id ? Number(form.customer_id) : null,
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        compliance_service_id: form.compliance_service_id ? Number(form.compliance_service_id) : null,
+        report_id: form.report_id ? Number(form.report_id) : null
+      };
+
+      if (editingCertificate) {
+        await updateCertificate(editingCertificate.id, payload);
+      } else {
+        await createCertificate(payload);
+      }
+
+      closeForm();
+      await loadCertificates();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleExport(certificate) {
+    setError("");
+
+    try {
+      const blob = await exportCertificate(certificate.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${certificate.certificate_reference}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Draft", value: summary.draft || 0 },
+    { label: "Issued", value: summary.issued || 0 },
+    { label: "Revoked", value: summary.revoked || 0 },
+    { label: "Expired", value: summary.expired || 0 },
+    { label: "Expiring Soon", value: summary.expiring_soon || 0 }
+  ];
+
+  return (
+    <div className="certificates-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Certificates Foundation</p>
+          <h2>Controlled compliance certificates</h2>
+          <p>Create, issue, revoke and export certificates linked to services, reports, assets and customers.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Certificate
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search certificates..." />
+        </div>
+
+        <select value={certificateType} onChange={(event) => setCertificateType(event.target.value)}>
+          <option value="">All certificate types</option>
+          <option>Compliance Certificate</option>
+          <option>Inspection Certificate</option>
+          <option>Test Certificate</option>
+          <option>Completion Certificate</option>
+          <option>Safety Certificate</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All certificates</option>
+          <option>Draft</option>
+          <option>Issued</option>
+          <option>Revoked</option>
+          <option>Expired</option>
+        </select>
+
+        <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+          <option value="">All customers</option>
+          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Certificates</strong>
+          <span>{certificates.length} shown</span>
+        </div>
+
+        {certificates.length ? (
+          <div className="customer-list">
+            {certificates.map((certificate) => (
+              <div className="customer-row certificate-row" key={certificate.id}>
+                <div>
+                  <strong>{certificate.certificate_title}</strong>
+                  <span>{certificate.certificate_reference}</span>
+                </div>
+                <div>
+                  <span>{certificate.certificate_type}</span>
+                  <span>{certificate.customer_name || "No customer"}</span>
+                </div>
+                <div>
+                  <span>{certificate.asset_reference || certificate.service_reference || certificate.report_reference || "No linked record"}</span>
+                  <span>{certificate.expiry_date ? `Expires: ${formatDateForDisplay(certificate.expiry_date)}` : "No expiry date"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(certificate.status)}`}>{certificate.status}</span>
+                  <span>{certificate.issued_by_name ? `Issued by ${certificate.issued_by_name}` : "Not issued"}</span>
+                </div>
+                <div className="row-actions">
+                  {canExport ? (
+                    <button className="secondary-button" type="button" onClick={() => handleExport(certificate)}>
+                      Export
+                    </button>
+                  ) : null}
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(certificate)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No certificates yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveCertificate}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingCertificate ? "Edit Certificate" : "New Certificate"}</p>
+                <h2>{editingCertificate ? editingCertificate.certificate_reference : "Add certificate"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <Field label="Certificate reference" value={form.certificate_reference} onChange={(value) => updateField("certificate_reference", value)} placeholder={editingCertificate ? "" : "Auto-generated if blank"} />
+              <Field label="Certificate title" value={form.certificate_title} onChange={(value) => updateField("certificate_title", value)} required />
+
+              <label>
+                Certificate type
+                <select value={form.certificate_type} onChange={(event) => updateField("certificate_type", event.target.value)}>
+                  <option>Compliance Certificate</option>
+                  <option>Inspection Certificate</option>
+                  <option>Test Certificate</option>
+                  <option>Completion Certificate</option>
+                  <option>Safety Certificate</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Draft</option>
+                  {canIssue || form.status === "Issued" ? <option>Issued</option> : null}
+                  {canRevoke || form.status === "Revoked" ? <option>Revoked</option> : null}
+                  <option>Expired</option>
+                </select>
+              </label>
+
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)}>
+                  <option value="">No customer</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Building
+                <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)}>
+                  <option value="">No building</option>
+                  {buildings.map((building) => <option key={building.id} value={building.id}>{building.name} - {building.customer_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Asset
+                <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)}>
+                  <option value="">No asset</option>
+                  {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_reference} - {asset.asset_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Compliance service
+                <select value={form.compliance_service_id} onChange={(event) => updateField("compliance_service_id", event.target.value)}>
+                  <option value="">No compliance service</option>
+                  {services.map((service) => <option key={service.id} value={service.id}>{service.service_reference} - {service.service_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Report
+                <select value={form.report_id} onChange={(event) => updateField("report_id", event.target.value)}>
+                  <option value="">No report</option>
+                  {reports.map((report) => <option key={report.id} value={report.id}>{report.report_reference} - {report.report_title}</option>)}
+                </select>
+              </label>
+
+              <Field label="Issue date" value={form.issue_date} onChange={(value) => updateField("issue_date", value)} type="date" />
+              <Field label="Expiry date" value={form.expiry_date} onChange={(value) => updateField("expiry_date", value)} type="date" />
+
+              <label className="wide-field">
+                Certificate body
+                <textarea value={form.certificate_body || ""} onChange={(event) => updateField("certificate_body", event.target.value)} rows={5} />
+              </label>
+
+              <label className="wide-field">
+                Revocation reason
+                <textarea value={form.revocation_reason || ""} onChange={(event) => updateField("revocation_reason", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            {editingCertificate ? (
+              <RecordHistoryPanel entityType="certificate" entityId={editingCertificate.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Certificate"}
               </button>
             </div>
           </form>

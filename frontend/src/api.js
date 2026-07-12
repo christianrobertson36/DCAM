@@ -441,6 +441,41 @@ export async function exportReport(id) {
   return apiBlobRequest(`/api/reports/${id}/export`);
 }
 
+export async function getCertificateSummary() {
+  return apiRequest("/api/certificates/summary");
+}
+
+export async function listCertificates(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "certificate_type", "customer_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/certificates${suffix}`);
+}
+
+export async function createCertificate(payload) {
+  return apiRequest("/api/certificates", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateCertificate(id, payload) {
+  return apiRequest(`/api/certificates/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function exportCertificate(id) {
+  return apiBlobRequest(`/api/certificates/${id}/export`);
+}
+
 export async function getTechnicianJobSummary() {
   return apiRequest("/api/technician/jobs/summary");
 }
