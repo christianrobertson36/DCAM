@@ -449,10 +449,10 @@ async function createSampleData(client, userId) {
       sample_data_key
     )
     VALUES
-      ($2, 'Daniel Price', 'Store Manager', 'Daniel Price', 'Sample customer sign-off awaiting final completion notes.', $3, $4)
+      ($1, 'Daniel Price', 'Store Manager', 'Daniel Price', 'Sample customer sign-off awaiting final completion notes.', $2, $3)
     RETURNING id
     `,
-    [plannedOrder.id, reactiveOrder.id, userId, SAMPLE_KEY]
+    [reactiveOrder.id, userId, SAMPLE_KEY]
   );
   created.signatures = signatureResult.rowCount;
 

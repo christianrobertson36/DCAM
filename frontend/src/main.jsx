@@ -109,6 +109,7 @@ const TRANSLATIONS = {
     "v22 Job Sign-Off Foundation": "v23 Setari si limba",
     "v23 Settings and Language": "v23 Setari si limba",
     "v24 Sample Data Controls": "v24 Control date exemplu",
+    "v25 Sample Data Hotfix": "v25 Remediere date exemplu",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -712,7 +713,7 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="eyebrow">v24 Sample Data Controls</p>
+        <p className="eyebrow">v25 Sample Data Hotfix</p>
         <h1>Sign in to DCAM</h1>
         <p className="login-intro">
           Digital Compliance & Asset Management for technical compliance operations.
@@ -810,7 +811,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v24 Sample Data Controls</p>
+            <p className="eyebrow">v25 Sample Data Hotfix</p>
             <h1>{pageTitle}</h1>
           </div>
 
