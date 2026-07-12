@@ -375,6 +375,37 @@ export async function updateComplianceService(id, payload) {
   });
 }
 
+export async function getFormTemplateSummary() {
+  return apiRequest("/api/form-templates/summary");
+}
+
+export async function listFormTemplates(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "service_type"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/form-templates${suffix}`);
+}
+
+export async function createFormTemplate(payload) {
+  return apiRequest("/api/form-templates", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateFormTemplate(id, payload) {
+  return apiRequest(`/api/form-templates/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getTechnicianJobSummary() {
   return apiRequest("/api/technician/jobs/summary");
 }

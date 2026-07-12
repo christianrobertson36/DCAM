@@ -23,6 +23,7 @@ import {
   createBuilding,
   createComplianceService,
   createCustomer,
+  createFormTemplate,
   createMaintenancePlan,
   createTechnicianJobSignature,
   createTechnicianJobChecklistItem,
@@ -38,6 +39,7 @@ import {
   getBuildingSummary,
   getComplianceServiceSummary,
   getCustomerSummary,
+  getFormTemplateSummary,
   getMaintenancePlanSummary,
   getMe,
   getSampleDataStatus,
@@ -55,6 +57,7 @@ import {
   listBuildings,
   listComplianceServices,
   listCustomers,
+  listFormTemplates,
   listScheduleAssignments,
   listStaffProfiles,
   listStaffQualifications,
@@ -68,6 +71,7 @@ import {
   updateAsset,
   updateAssetOption,
   updateComplianceService,
+  updateFormTemplate,
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
@@ -122,6 +126,7 @@ const TRANSLATIONS = {
     "v26 Record Edit History": "v26 Istoric editare inregistrari",
     "v27 Planned Maintenance": "v27 Mentenanta planificata",
     "v28 Compliance Services": "v28 Servicii conformitate",
+    "v29 Forms Builder": "v29 Constructor formulare",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -138,6 +143,7 @@ const TRANSLATIONS = {
     "Schedule": "Programare",
     "Maintenance Plans": "Planuri de mentenanta",
     "Compliance Services": "Servicii conformitate",
+    "Forms Builder": "Constructor formulare",
     "My Jobs": "Joburile mele",
     "People": "Personal",
     "Asset Settings": "Setari active",
@@ -367,6 +373,25 @@ const TRANSLATIONS = {
     "Corrective actions": "Actiuni corective",
     "Defects found": "Defecte gasite",
     "Save Service": "Salveaza serviciul",
+    "Forms and Inspection Builder": "Constructor formulare si inspectii",
+    "Reusable inspection templates": "Sabloane reutilizabile de inspectie",
+    "Build form templates with sections, questions, answer types and scoring rules.": "Creati sabloane de formulare cu sectiuni, intrebari, tipuri de raspuns si reguli de scor.",
+    "Add Template": "Adauga sablon",
+    "Draft": "Ciorna",
+    "Archived": "Arhivat",
+    "Approval Required": "Aprobare necesara",
+    "All templates": "Toate sabloanele",
+    "No form templates yet.": "Nu exista sabloane de formulare.",
+    "Edit Template": "Editare sablon",
+    "New Template": "Sablon nou",
+    "Add form template": "Adauga sablon formular",
+    "Template reference": "Referinta sablon",
+    "Template name": "Nume sablon",
+    "Version": "Versiune",
+    "Scoring enabled": "Scor activat",
+    "Approval required": "Aprobare necesara",
+    "Sections JSON": "JSON sectiuni",
+    "Save Template": "Salveaza sablonul",
     "Technician App Foundation": "Fundatie aplicatie tehnician",
     "Assigned jobs": "Joburi alocate",
     "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
@@ -527,6 +552,10 @@ const PERMISSIONS = {
   COMPLIANCE_SERVICES_CREATE: "compliance_services:create",
   COMPLIANCE_SERVICES_EDIT: "compliance_services:edit",
   COMPLIANCE_SERVICES_APPROVE: "compliance_services:approve",
+  FORM_TEMPLATES_VIEW: "form_templates:view",
+  FORM_TEMPLATES_CREATE: "form_templates:create",
+  FORM_TEMPLATES_EDIT: "form_templates:edit",
+  FORM_TEMPLATES_APPROVE: "form_templates:approve",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
@@ -542,6 +571,7 @@ const navItems = [
   { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
   { label: "Maintenance Plans", icon: CalendarDays, permission: PERMISSIONS.MAINTENANCE_PLANS_VIEW },
   { label: "Compliance Services", icon: ClipboardCheck, permission: PERMISSIONS.COMPLIANCE_SERVICES_VIEW },
+  { label: "Forms Builder", icon: ClipboardCheck, permission: PERMISSIONS.FORM_TEMPLATES_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
@@ -691,6 +721,32 @@ const emptyComplianceService = {
   findings: "",
   corrective_actions: "",
   notes: ""
+};
+
+const emptyFormTemplate = {
+  template_reference: "",
+  template_name: "",
+  service_type: "Technical Compliance Audit",
+  status: "Draft",
+  version_number: 1,
+  scoring_enabled: false,
+  approval_required: true,
+  description: "",
+  sections_text: JSON.stringify([
+    {
+      title: "Inspection",
+      description: "Core inspection checks",
+      questions: [
+        {
+          prompt: "Is the item safe and accessible?",
+          answer_type: "Pass/Fail",
+          is_required: true,
+          scoring_weight: 1,
+          options: []
+        }
+      ]
+    }
+  ], null, 2)
 };
 
 const emptyStaffProfile = {
@@ -906,7 +962,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -943,7 +999,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v28 Compliance Services</p>
+            <p className="eyebrow">v29 Forms Builder</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -966,6 +1022,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
         {activePage === "Maintenance Plans" ? <MaintenancePlansPage user={user} /> : null}
         {activePage === "Compliance Services" ? <ComplianceServicesPage user={user} /> : null}
+        {activePage === "Forms Builder" ? <FormTemplatesPage user={user} /> : null}
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
@@ -976,7 +1033,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -4144,6 +4201,310 @@ function ComplianceServicesPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Service"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FormTemplatesPage({ user }) {
+  const [templates, setTemplates] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    draft: 0,
+    active: 0,
+    archived: 0,
+    approval_required: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [serviceType, setServiceType] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [form, setForm] = useState(emptyFormTemplate);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.FORM_TEMPLATES_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.FORM_TEMPLATES_EDIT);
+  const canApprove = hasPermission(user, PERMISSIONS.FORM_TEMPLATES_APPROVE);
+
+  async function loadTemplates() {
+    const [summaryData, templatesData] = await Promise.all([
+      getFormTemplateSummary(),
+      listFormTemplates({ search, status, service_type: serviceType })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setTemplates(templatesData.form_templates || []);
+  }
+
+  useEffect(() => {
+    loadTemplates().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadTemplates();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingTemplate(null);
+    setForm(emptyFormTemplate);
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(template) {
+    setEditingTemplate(template);
+    setForm({
+      ...emptyFormTemplate,
+      ...template,
+      template_reference: template.template_reference || "",
+      version_number: template.version_number || 1,
+      scoring_enabled: Boolean(template.scoring_enabled),
+      approval_required: Boolean(template.approval_required),
+      sections_text: JSON.stringify(template.sections || [], null, 2)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingTemplate(null);
+    setForm(emptyFormTemplate);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveTemplate(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      let sections;
+
+      try {
+        sections = JSON.parse(form.sections_text || "[]");
+      } catch (err) {
+        throw new Error("Sections JSON must be valid JSON.");
+      }
+
+      if (!Array.isArray(sections)) {
+        throw new Error("Sections JSON must be an array.");
+      }
+
+      const payload = {
+        ...form,
+        version_number: Number(form.version_number) || 1,
+        sections
+      };
+
+      delete payload.sections_text;
+
+      if (editingTemplate) {
+        await updateFormTemplate(editingTemplate.id, payload);
+      } else {
+        await createFormTemplate(payload);
+      }
+
+      closeForm();
+      await loadTemplates();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Draft", value: summary.draft || 0 },
+    { label: "Active", value: summary.active || 0 },
+    { label: "Archived", value: summary.archived || 0 },
+    { label: "Approval Required", value: summary.approval_required || 0 }
+  ];
+
+  return (
+    <div className="form-templates-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Forms and Inspection Builder</p>
+          <h2>Reusable inspection templates</h2>
+          <p>Build form templates with sections, questions, answer types and scoring rules.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Template
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search form templates..." />
+        </div>
+
+        <select value={serviceType} onChange={(event) => setServiceType(event.target.value)}>
+          <option value="">All service types</option>
+          <option>PAT Testing</option>
+          <option>Fire Door Inspection</option>
+          <option>Fire Damper Testing</option>
+          <option>Electrical Compliance</option>
+          <option>Technical Compliance Audit</option>
+          <option>General Building Maintenance</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All templates</option>
+          <option>Draft</option>
+          <option>Active</option>
+          <option>Archived</option>
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Forms Builder</strong>
+          <span>{templates.length} shown</span>
+        </div>
+
+        {templates.length ? (
+          <div className="customer-list">
+            {templates.map((template) => (
+              <div className="customer-row form-template-row" key={template.id}>
+                <div>
+                  <strong>{template.template_name}</strong>
+                  <span>{template.template_reference}</span>
+                </div>
+                <div>
+                  <span>{template.service_type}</span>
+                  <span>Version {template.version_number}</span>
+                </div>
+                <div>
+                  <span>{template.section_count || 0} sections</span>
+                  <span>{template.question_count || 0} questions</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(template.status)}`}>{template.status}</span>
+                  <span>{template.scoring_enabled ? "Scoring enabled" : "Scoring disabled"}</span>
+                </div>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(template)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No form templates yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveTemplate}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingTemplate ? "Edit Template" : "New Template"}</p>
+                <h2>{editingTemplate ? editingTemplate.template_reference : "Add form template"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <Field label="Template reference" value={form.template_reference} onChange={(value) => updateField("template_reference", value)} placeholder={editingTemplate ? "" : "Auto-generated if blank"} />
+              <Field label="Template name" value={form.template_name} onChange={(value) => updateField("template_name", value)} required />
+
+              <label>
+                Service type
+                <select value={form.service_type} onChange={(event) => updateField("service_type", event.target.value)}>
+                  <option>PAT Testing</option>
+                  <option>Fire Door Inspection</option>
+                  <option>Fire Damper Testing</option>
+                  <option>Electrical Compliance</option>
+                  <option>Technical Compliance Audit</option>
+                  <option>General Building Maintenance</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Draft</option>
+                  {canApprove || form.status === "Active" ? <option>Active</option> : null}
+                  <option>Archived</option>
+                </select>
+              </label>
+
+              <Field label="Version" value={form.version_number} onChange={(value) => updateField("version_number", value)} type="number" />
+
+              <label className="inline-toggle">
+                <input type="checkbox" checked={form.scoring_enabled} onChange={(event) => updateField("scoring_enabled", event.target.checked)} />
+                Scoring enabled
+              </label>
+
+              <label className="inline-toggle">
+                <input type="checkbox" checked={form.approval_required} onChange={(event) => updateField("approval_required", event.target.checked)} />
+                Approval required
+              </label>
+
+              <label className="wide-field">
+                Description
+                <textarea value={form.description || ""} onChange={(event) => updateField("description", event.target.value)} rows={3} />
+              </label>
+
+              <label className="wide-field">
+                Sections JSON
+                <textarea value={form.sections_text || ""} onChange={(event) => updateField("sections_text", event.target.value)} rows={14} />
+              </label>
+            </div>
+
+            {editingTemplate ? (
+              <RecordHistoryPanel entityType="form_template" entityId={editingTemplate.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Template"}
               </button>
             </div>
           </form>
