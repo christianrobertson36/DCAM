@@ -406,6 +406,41 @@ export async function updateFormTemplate(id, payload) {
   });
 }
 
+export async function getReportSummary() {
+  return apiRequest("/api/reports/summary");
+}
+
+export async function listReports(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "report_type", "customer_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/reports${suffix}`);
+}
+
+export async function createReport(payload) {
+  return apiRequest("/api/reports", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateReport(id, payload) {
+  return apiRequest(`/api/reports/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function exportReport(id) {
+  return apiBlobRequest(`/api/reports/${id}/export`);
+}
+
 export async function getTechnicianJobSummary() {
   return apiRequest("/api/technician/jobs/summary");
 }

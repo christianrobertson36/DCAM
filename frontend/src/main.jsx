@@ -25,6 +25,7 @@ import {
   createCustomer,
   createFormTemplate,
   createMaintenancePlan,
+  createReport,
   createTechnicianJobSignature,
   createTechnicianJobChecklistItem,
   createStaffProfile,
@@ -34,6 +35,7 @@ import {
   deleteAssetFile,
   deleteSampleData,
   downloadAssetFile,
+  exportReport,
   downloadTechnicianJobFile,
   getAssetSummary,
   getBuildingSummary,
@@ -42,6 +44,7 @@ import {
   getFormTemplateSummary,
   getMaintenancePlanSummary,
   getMe,
+  getReportSummary,
   getSampleDataStatus,
   getScheduleSummary,
   getStaffSummary,
@@ -59,6 +62,7 @@ import {
   listCustomers,
   listFormTemplates,
   listScheduleAssignments,
+  listReports,
   listStaffProfiles,
   listStaffQualifications,
   listStaffUsers,
@@ -72,6 +76,7 @@ import {
   updateAssetOption,
   updateComplianceService,
   updateFormTemplate,
+  updateReport,
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
@@ -127,6 +132,7 @@ const TRANSLATIONS = {
     "v27 Planned Maintenance": "v27 Mentenanta planificata",
     "v28 Compliance Services": "v28 Servicii conformitate",
     "v29 Forms Builder": "v29 Constructor formulare",
+    "v30 Reports": "v30 Rapoarte",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -144,6 +150,7 @@ const TRANSLATIONS = {
     "Maintenance Plans": "Planuri de mentenanta",
     "Compliance Services": "Servicii conformitate",
     "Forms Builder": "Constructor formulare",
+    "Reports": "Rapoarte",
     "My Jobs": "Joburile mele",
     "People": "Personal",
     "Asset Settings": "Setari active",
@@ -392,6 +399,32 @@ const TRANSLATIONS = {
     "Approval required": "Aprobare necesara",
     "Sections JSON": "JSON sectiuni",
     "Save Template": "Salveaza sablonul",
+    "Reports Foundation": "Fundatie rapoarte",
+    "Operational and compliance reports": "Rapoarte operationale si de conformitate",
+    "Create controlled reports for customers, buildings, assets, work orders and compliance services.": "Creati rapoarte controlate pentru clienti, cladiri, active, comenzi de lucru si servicii de conformitate.",
+    "Add Report": "Adauga raport",
+    "Ready for Review": "Gata de revizuire",
+    "Issued": "Emis",
+    "All report types": "Toate tipurile de raport",
+    "All reports": "Toate rapoartele",
+    "Compliance Summary": "Rezumat conformitate",
+    "Asset Condition": "Stare active",
+    "Work Order Summary": "Rezumat comenzi de lucru",
+    "Service Report": "Raport serviciu",
+    "Customer Review": "Revizuire client",
+    "No reports yet.": "Nu exista rapoarte.",
+    "Edit Report": "Editare raport",
+    "New Report": "Raport nou",
+    "Add report": "Adauga raport",
+    "Report reference": "Referinta raport",
+    "Report title": "Titlu raport",
+    "Report type": "Tip raport",
+    "Date from": "Data de la",
+    "Date to": "Data pana la",
+    "Summary": "Rezumat",
+    "Recommendations": "Recomandari",
+    "Save Report": "Salveaza raportul",
+    "Export": "Exporta",
     "Technician App Foundation": "Fundatie aplicatie tehnician",
     "Assigned jobs": "Joburi alocate",
     "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
@@ -556,6 +589,11 @@ const PERMISSIONS = {
   FORM_TEMPLATES_CREATE: "form_templates:create",
   FORM_TEMPLATES_EDIT: "form_templates:edit",
   FORM_TEMPLATES_APPROVE: "form_templates:approve",
+  REPORTS_VIEW: "reports:view",
+  REPORTS_CREATE: "reports:create",
+  REPORTS_EDIT: "reports:edit",
+  REPORTS_APPROVE: "reports:approve",
+  REPORTS_EXPORT: "reports:export",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
@@ -572,6 +610,7 @@ const navItems = [
   { label: "Maintenance Plans", icon: CalendarDays, permission: PERMISSIONS.MAINTENANCE_PLANS_VIEW },
   { label: "Compliance Services", icon: ClipboardCheck, permission: PERMISSIONS.COMPLIANCE_SERVICES_VIEW },
   { label: "Forms Builder", icon: ClipboardCheck, permission: PERMISSIONS.FORM_TEMPLATES_VIEW },
+  { label: "Reports", icon: Download, permission: PERMISSIONS.REPORTS_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
@@ -747,6 +786,23 @@ const emptyFormTemplate = {
       ]
     }
   ], null, 2)
+};
+
+const emptyReport = {
+  report_reference: "",
+  report_title: "",
+  report_type: "Compliance Summary",
+  status: "Draft",
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  work_order_id: "",
+  compliance_service_id: "",
+  date_from: "",
+  date_to: "",
+  summary: "",
+  findings: "",
+  recommendations: ""
 };
 
 const emptyStaffProfile = {
@@ -962,7 +1018,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -999,7 +1055,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v29 Forms Builder</p>
+            <p className="eyebrow">v30 Reports</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -1023,6 +1079,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Maintenance Plans" ? <MaintenancePlansPage user={user} /> : null}
         {activePage === "Compliance Services" ? <ComplianceServicesPage user={user} /> : null}
         {activePage === "Forms Builder" ? <FormTemplatesPage user={user} /> : null}
+        {activePage === "Reports" ? <ReportsPage user={user} /> : null}
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
@@ -1033,7 +1090,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -4505,6 +4562,390 @@ function FormTemplatesPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Template"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ReportsPage({ user }) {
+  const [reports, setReports] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
+  const [services, setServices] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    draft: 0,
+    ready_for_review: 0,
+    approved: 0,
+    issued: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [reportType, setReportType] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState(null);
+  const [form, setForm] = useState(emptyReport);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.REPORTS_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.REPORTS_EDIT);
+  const canApprove = hasPermission(user, PERMISSIONS.REPORTS_APPROVE);
+  const canExport = hasPermission(user, PERMISSIONS.REPORTS_EXPORT);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewBuildings = hasPermission(user, PERMISSIONS.BUILDINGS_VIEW);
+  const canViewAssets = hasPermission(user, PERMISSIONS.ASSETS_VIEW);
+  const canViewWorkOrders = hasPermission(user, PERMISSIONS.WORK_ORDERS_VIEW);
+  const canViewServices = hasPermission(user, PERMISSIONS.COMPLIANCE_SERVICES_VIEW);
+
+  async function loadReports() {
+    const [summaryData, reportsData, customersData, buildingsData, assetsData, workOrdersData, servicesData] = await Promise.all([
+      getReportSummary(),
+      listReports({ search, status, report_type: reportType, customer_id: customerId }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] }),
+      canViewBuildings ? listBuildings() : Promise.resolve({ buildings: [] }),
+      canViewAssets ? listAssets() : Promise.resolve({ assets: [] }),
+      canViewWorkOrders ? listWorkOrders() : Promise.resolve({ work_orders: [] }),
+      canViewServices ? listComplianceServices() : Promise.resolve({ compliance_services: [] })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setReports(reportsData.reports || []);
+    setCustomers(customersData.customers || []);
+    setBuildings(buildingsData.buildings || []);
+    setAssets(assetsData.assets || []);
+    setWorkOrders(workOrdersData.work_orders || []);
+    setServices(servicesData.compliance_services || []);
+  }
+
+  useEffect(() => {
+    loadReports().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadReports();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingReport(null);
+    setForm({
+      ...emptyReport,
+      customer_id: customers[0]?.id || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(report) {
+    setEditingReport(report);
+    setForm({
+      ...emptyReport,
+      ...report,
+      customer_id: report.customer_id || "",
+      building_id: report.building_id || "",
+      asset_id: report.asset_id || "",
+      work_order_id: report.work_order_id || "",
+      compliance_service_id: report.compliance_service_id || "",
+      date_from: formatDateForInput(report.date_from),
+      date_to: formatDateForInput(report.date_to)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingReport(null);
+    setForm(emptyReport);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveReport(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: form.customer_id ? Number(form.customer_id) : null,
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        work_order_id: form.work_order_id ? Number(form.work_order_id) : null,
+        compliance_service_id: form.compliance_service_id ? Number(form.compliance_service_id) : null
+      };
+
+      if (editingReport) {
+        await updateReport(editingReport.id, payload);
+      } else {
+        await createReport(payload);
+      }
+
+      closeForm();
+      await loadReports();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleExport(report) {
+    setError("");
+
+    try {
+      const blob = await exportReport(report.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${report.report_reference}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total", value: summary.total || 0 },
+    { label: "Draft", value: summary.draft || 0 },
+    { label: "Ready for Review", value: summary.ready_for_review || 0 },
+    { label: "Approved", value: summary.approved || 0 },
+    { label: "Issued", value: summary.issued || 0 }
+  ];
+
+  return (
+    <div className="reports-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Reports Foundation</p>
+          <h2>Operational and compliance reports</h2>
+          <p>Create controlled reports for customers, buildings, assets, work orders and compliance services.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Report
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search reports..." />
+        </div>
+
+        <select value={reportType} onChange={(event) => setReportType(event.target.value)}>
+          <option value="">All report types</option>
+          <option>Compliance Summary</option>
+          <option>Asset Condition</option>
+          <option>Work Order Summary</option>
+          <option>Service Report</option>
+          <option>Customer Review</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All reports</option>
+          <option>Draft</option>
+          <option>Ready for Review</option>
+          <option>Approved</option>
+          <option>Issued</option>
+        </select>
+
+        <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+          <option value="">All customers</option>
+          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Reports</strong>
+          <span>{reports.length} shown</span>
+        </div>
+
+        {reports.length ? (
+          <div className="customer-list">
+            {reports.map((report) => (
+              <div className="customer-row report-row" key={report.id}>
+                <div>
+                  <strong>{report.report_title}</strong>
+                  <span>{report.report_reference}</span>
+                </div>
+                <div>
+                  <span>{report.report_type}</span>
+                  <span>{report.customer_name || "No customer"}</span>
+                </div>
+                <div>
+                  <span>{report.building_name || report.asset_reference || report.service_reference || "No linked record"}</span>
+                  <span>{report.date_from || report.date_to ? `${formatDateForDisplay(report.date_from)} - ${formatDateForDisplay(report.date_to)}` : "No date range"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(report.status)}`}>{report.status}</span>
+                  <span>{report.approved_by_name ? `Approved by ${report.approved_by_name}` : "Not approved"}</span>
+                </div>
+                <div className="row-actions">
+                  {canExport ? (
+                    <button className="secondary-button" type="button" onClick={() => handleExport(report)}>
+                      Export
+                    </button>
+                  ) : null}
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(report)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No reports yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveReport}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingReport ? "Edit Report" : "New Report"}</p>
+                <h2>{editingReport ? editingReport.report_reference : "Add report"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <Field label="Report reference" value={form.report_reference} onChange={(value) => updateField("report_reference", value)} placeholder={editingReport ? "" : "Auto-generated if blank"} />
+              <Field label="Report title" value={form.report_title} onChange={(value) => updateField("report_title", value)} required />
+
+              <label>
+                Report type
+                <select value={form.report_type} onChange={(event) => updateField("report_type", event.target.value)}>
+                  <option>Compliance Summary</option>
+                  <option>Asset Condition</option>
+                  <option>Work Order Summary</option>
+                  <option>Service Report</option>
+                  <option>Customer Review</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Draft</option>
+                  <option>Ready for Review</option>
+                  {canApprove || form.status === "Approved" ? <option>Approved</option> : null}
+                  <option>Issued</option>
+                </select>
+              </label>
+
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)}>
+                  <option value="">No customer</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Building
+                <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)}>
+                  <option value="">No building</option>
+                  {buildings.map((building) => <option key={building.id} value={building.id}>{building.name} - {building.customer_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Asset
+                <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)}>
+                  <option value="">No asset</option>
+                  {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_reference} - {asset.asset_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Work order
+                <select value={form.work_order_id} onChange={(event) => updateField("work_order_id", event.target.value)}>
+                  <option value="">No work order</option>
+                  {workOrders.map((workOrder) => <option key={workOrder.id} value={workOrder.id}>{workOrder.work_order_reference} - {workOrder.title}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Compliance service
+                <select value={form.compliance_service_id} onChange={(event) => updateField("compliance_service_id", event.target.value)}>
+                  <option value="">No compliance service</option>
+                  {services.map((service) => <option key={service.id} value={service.id}>{service.service_reference} - {service.service_name}</option>)}
+                </select>
+              </label>
+
+              <Field label="Date from" value={form.date_from} onChange={(value) => updateField("date_from", value)} type="date" />
+              <Field label="Date to" value={form.date_to} onChange={(value) => updateField("date_to", value)} type="date" />
+
+              <label className="wide-field">
+                Summary
+                <textarea value={form.summary || ""} onChange={(event) => updateField("summary", event.target.value)} rows={4} />
+              </label>
+
+              <label className="wide-field">
+                Findings
+                <textarea value={form.findings || ""} onChange={(event) => updateField("findings", event.target.value)} rows={4} />
+              </label>
+
+              <label className="wide-field">
+                Recommendations
+                <textarea value={form.recommendations || ""} onChange={(event) => updateField("recommendations", event.target.value)} rows={4} />
+              </label>
+            </div>
+
+            {editingReport ? (
+              <RecordHistoryPanel entityType="report" entityId={editingReport.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Report"}
               </button>
             </div>
           </form>
