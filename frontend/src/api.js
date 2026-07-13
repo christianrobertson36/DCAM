@@ -70,6 +70,17 @@ export async function getMe() {
   return apiRequest("/auth/me");
 }
 
+export async function getCustomerPortalDashboard(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.customer_id) {
+    query.set("customer_id", params.customer_id);
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/customer-portal/dashboard${suffix}`);
+}
+
 export async function getCustomerSummary() {
   return apiRequest("/api/customers/summary");
 }

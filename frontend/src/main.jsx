@@ -43,6 +43,7 @@ import {
   getBuildingSummary,
   getCertificateSummary,
   getComplianceServiceSummary,
+  getCustomerPortalDashboard,
   getCustomerSummary,
   getFormTemplateSummary,
   getMaintenancePlanSummary,
@@ -139,6 +140,7 @@ const TRANSLATIONS = {
     "v29 Forms Builder": "v29 Constructor formulare",
     "v30 Reports": "v30 Rapoarte",
     "v31 Certificates": "v31 Certificate",
+    "v32 Customer Portal": "v32 Portal client",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -158,6 +160,7 @@ const TRANSLATIONS = {
     "Forms Builder": "Constructor formulare",
     "Reports": "Rapoarte",
     "Certificates": "Certificate",
+    "Customer Portal": "Portal client",
     "My Jobs": "Joburile mele",
     "People": "Personal",
     "Asset Settings": "Setari active",
@@ -456,6 +459,18 @@ const TRANSLATIONS = {
     "Certificate body": "Continut certificat",
     "Revocation reason": "Motiv revocare",
     "Save Certificate": "Salveaza certificatul",
+    "Customer Portal Foundation": "Fundatie portal client",
+    "Your compliance workspace": "Spatiul dvs. de conformitate",
+    "View your sites, assets, open work, reports and certificates in one controlled portal.": "Vedeti site-urile, activele, lucrarile deschise, rapoartele si certificatele intr-un portal controlat.",
+    "Linked Customers": "Clienti asociati",
+    "Open Work": "Lucrari deschise",
+    "Portal access is not linked to a customer record yet.": "Accesul portalului nu este asociat inca unui client.",
+    "Contact your DCAM administrator to link this login to your company.": "Contactati administratorul DCAM pentru a asocia acest login cu compania dvs.",
+    "Your Sites": "Site-urile dvs.",
+    "Your Assets": "Activele dvs.",
+    "Your Work Orders": "Comenzile dvs.",
+    "Your Reports": "Rapoartele dvs.",
+    "Your Certificates": "Certificatele dvs.",
     "Technician App Foundation": "Fundatie aplicatie tehnician",
     "Assigned jobs": "Joburi alocate",
     "View allocated work and update job status from the assigned-user job queue.": "Vizualizati lucrarile alocate si actualizati starea jobului din coada utilizatorului alocat.",
@@ -631,6 +646,7 @@ const PERMISSIONS = {
   CERTIFICATES_ISSUE: "certificates:issue",
   CERTIFICATES_REVOKE: "certificates:revoke",
   CERTIFICATES_EXPORT: "certificates:export",
+  CUSTOMER_PORTAL_VIEW: "customer_portal:view",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
@@ -649,6 +665,7 @@ const navItems = [
   { label: "Forms Builder", icon: ClipboardCheck, permission: PERMISSIONS.FORM_TEMPLATES_VIEW },
   { label: "Reports", icon: Download, permission: PERMISSIONS.REPORTS_VIEW },
   { label: "Certificates", icon: Download, permission: PERMISSIONS.CERTIFICATES_VIEW },
+  { label: "Customer Portal", icon: LayoutDashboard, permission: PERMISSIONS.CUSTOMER_PORTAL_VIEW },
   { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
   { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
   { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
@@ -1072,7 +1089,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -1109,7 +1126,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v31 Certificates</p>
+            <p className="eyebrow">v32 Customer Portal</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -1135,6 +1152,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Forms Builder" ? <FormTemplatesPage user={user} /> : null}
         {activePage === "Reports" ? <ReportsPage user={user} /> : null}
         {activePage === "Certificates" ? <CertificatesPage user={user} /> : null}
+        {activePage === "Customer Portal" ? <CustomerPortalPage user={user} /> : null}
         {activePage === "My Jobs" ? <TechnicianJobsPage user={user} /> : null}
         {activePage === "People" ? <PeoplePage user={user} /> : null}
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
@@ -1145,7 +1163,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -1206,6 +1224,225 @@ function DashboardPage() {
         <Module title="Automation & AI" text="Renewal reminders, report writing, quotation support and intelligent search." />
       </section>
     </>
+  );
+}
+
+function CustomerPortalPage({ user }) {
+  const [portal, setPortal] = useState({
+    customers: [],
+    summary: {},
+    buildings: [],
+    assets: [],
+    work_orders: [],
+    reports: [],
+    certificates: []
+  });
+  const [customerId, setCustomerId] = useState("");
+  const [error, setError] = useState("");
+
+  async function loadPortal(nextCustomerId = customerId) {
+    const data = await getCustomerPortalDashboard({ customer_id: nextCustomerId });
+    setPortal(data);
+  }
+
+  useEffect(() => {
+    loadPortal().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleCustomerChange(value) {
+    setCustomerId(value);
+    setError("");
+
+    try {
+      await loadPortal(value);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const summary = portal.summary || {};
+  const summaryCards = [
+    { label: "Linked Customers", value: summary.customers || 0 },
+    { label: "Buildings", value: summary.buildings || 0 },
+    { label: "Assets", value: summary.assets || 0 },
+    { label: "Open Work", value: summary.open_work_orders || 0 },
+    { label: "Reports", value: summary.reports || 0 },
+    { label: "Certificates", value: summary.certificates || 0 }
+  ];
+  const canChooseCustomer = user.role !== "Customer" && portal.customers.length > 1;
+
+  return (
+    <div className="customer-portal-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Customer Portal Foundation</p>
+          <h2>Your compliance workspace</h2>
+          <p>View your sites, assets, open work, reports and certificates in one controlled portal.</p>
+        </div>
+
+        {canChooseCustomer ? (
+          <select value={customerId} onChange={(event) => handleCustomerChange(event.target.value)}>
+            <option value="">All customers</option>
+            {portal.customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>{customer.company_name}</option>
+            ))}
+          </select>
+        ) : null}
+      </section>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      {!portal.customers.length ? (
+        <section className="table-card">
+          <div className="empty-state">
+            <strong>Portal access is not linked to a customer record yet.</strong>
+            <span>Contact your DCAM administrator to link this login to your company.</span>
+          </div>
+        </section>
+      ) : (
+        <>
+          <section className="mini-card-grid">
+            {summaryCards.map((card) => (
+              <article className="mini-card" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </article>
+            ))}
+          </section>
+
+          <PortalList
+            title="Your Sites"
+            rows={portal.buildings}
+            emptyText="No buildings yet."
+            renderRow={(building) => (
+              <>
+                <div>
+                  <strong>{building.name}</strong>
+                  <span>{building.building_type}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(building.status)}`}>{building.status}</span>
+                  <span>{building.city || building.postcode || "No location"}</span>
+                </div>
+                <div>
+                  <span>{building.site_contact_name || "No site contact"}</span>
+                </div>
+              </>
+            )}
+          />
+
+          <PortalList
+            title="Your Assets"
+            rows={portal.assets}
+            emptyText="No assets yet."
+            renderRow={(asset) => (
+              <>
+                <div>
+                  <strong>{asset.asset_name}</strong>
+                  <span>{asset.asset_reference}</span>
+                </div>
+                <div>
+                  <span>{asset.asset_category} / {asset.asset_type}</span>
+                  <span>{asset.building_name || "No building"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(asset.status)}`}>{asset.status}</span>
+                  <span>{asset.next_service_date ? `Next: ${formatDateForDisplay(asset.next_service_date)}` : "No service date"}</span>
+                </div>
+              </>
+            )}
+          />
+
+          <PortalList
+            title="Your Work Orders"
+            rows={portal.work_orders}
+            emptyText="No work orders yet."
+            renderRow={(workOrder) => (
+              <>
+                <div>
+                  <strong>{workOrder.title}</strong>
+                  <span>{workOrder.work_order_reference}</span>
+                </div>
+                <div>
+                  <span>{workOrder.priority}</span>
+                  <span>{workOrder.building_name || "No building"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(workOrder.status)}`}>{workOrder.status}</span>
+                  <span>{workOrder.due_date ? `Due: ${formatDateForDisplay(workOrder.due_date)}` : "No due date"}</span>
+                </div>
+              </>
+            )}
+          />
+
+          <PortalList
+            title="Your Reports"
+            rows={portal.reports}
+            emptyText="No reports yet."
+            renderRow={(report) => (
+              <>
+                <div>
+                  <strong>{report.report_title}</strong>
+                  <span>{report.report_reference}</span>
+                </div>
+                <div>
+                  <span>{report.report_type}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(report.status)}`}>{report.status}</span>
+                  <span>{report.updated_at ? formatDateForDisplay(report.updated_at) : "No date"}</span>
+                </div>
+              </>
+            )}
+          />
+
+          <PortalList
+            title="Your Certificates"
+            rows={portal.certificates}
+            emptyText="No certificates yet."
+            renderRow={(certificate) => (
+              <>
+                <div>
+                  <strong>{certificate.certificate_title}</strong>
+                  <span>{certificate.certificate_reference}</span>
+                </div>
+                <div>
+                  <span>{certificate.certificate_type}</span>
+                  <span>{certificate.issue_date ? `Issued: ${formatDateForDisplay(certificate.issue_date)}` : "Not issued"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(certificate.status)}`}>{certificate.status}</span>
+                  <span>{certificate.expiry_date ? `Expires: ${formatDateForDisplay(certificate.expiry_date)}` : "No expiry date"}</span>
+                </div>
+              </>
+            )}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function PortalList({ title, rows, emptyText, renderRow }) {
+  return (
+    <section className="table-card">
+      <div className="table-header">
+        <strong>{title}</strong>
+        <span>{rows.length} shown</span>
+      </div>
+
+      {rows.length ? (
+        <div className="customer-list">
+          {rows.map((row) => (
+            <div className="customer-row portal-row" key={row.id}>
+              {renderRow(row)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">{emptyText}</div>
+      )}
+    </section>
   );
 }
 

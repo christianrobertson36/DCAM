@@ -21,6 +21,7 @@ const complianceServicesRoutes = require("./routes/complianceServices");
 const formTemplatesRoutes = require("./routes/formTemplates");
 const reportsRoutes = require("./routes/reports");
 const certificatesRoutes = require("./routes/certificates");
+const customerPortalRoutes = require("./routes/customerPortal");
 const moduleRoutes = require("./routes/modules");
 
 const app = express();
@@ -45,6 +46,7 @@ app.use("/api/compliance-services", complianceServicesRoutes);
 app.use("/api/form-templates", formTemplatesRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/certificates", certificatesRoutes);
+app.use("/api/customer-portal", customerPortalRoutes);
 app.use("/api/technician", technicianRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/audit", auditRoutes);
