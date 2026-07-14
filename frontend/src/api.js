@@ -114,6 +114,37 @@ export async function updateCustomer(id, payload) {
   });
 }
 
+export async function getContactSummary() {
+  return apiRequest("/api/contacts/summary");
+}
+
+export async function listContacts(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "customer_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/contacts${suffix}`);
+}
+
+export async function createContact(payload) {
+  return apiRequest("/api/contacts", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateContact(id, payload) {
+  return apiRequest(`/api/contacts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getBuildingSummary() {
   return apiRequest("/api/buildings/summary");
 }

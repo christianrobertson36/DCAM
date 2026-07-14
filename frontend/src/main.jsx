@@ -23,6 +23,7 @@ import {
   createBuilding,
   createCertificate,
   createComplianceService,
+  createContact,
   createCustomer,
   createFormTemplate,
   createMaintenancePlan,
@@ -43,6 +44,7 @@ import {
   getBuildingSummary,
   getCertificateSummary,
   getComplianceServiceSummary,
+  getContactSummary,
   getCustomerPortalDashboard,
   getCustomerSummary,
   getFormTemplateSummary,
@@ -64,6 +66,7 @@ import {
   listBuildings,
   listCertificates,
   listComplianceServices,
+  listContacts,
   listCustomers,
   listFormTemplates,
   listScheduleAssignments,
@@ -81,6 +84,7 @@ import {
   updateAssetOption,
   updateCertificate,
   updateComplianceService,
+  updateContact,
   updateFormTemplate,
   updateReport,
   uploadAssetFile,
@@ -141,6 +145,7 @@ const TRANSLATIONS = {
     "v30 Reports": "v30 Rapoarte",
     "v31 Certificates": "v31 Certificate",
     "v32 Customer Portal": "v32 Portal client",
+    "v33 Contacts": "v33 Contacte",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -151,6 +156,7 @@ const TRANSLATIONS = {
     "Dev admin: admin@dcam.local / ChangeMe123!": "Admin dezvoltare: admin@dcam.local / ChangeMe123!",
     "Dashboard": "Panou",
     "Customers": "Clienti",
+    "Contacts": "Contacte",
     "Buildings": "Cladiri",
     "Assets": "Active",
     "Work Orders": "Comenzi de lucru",
@@ -227,6 +233,24 @@ const TRANSLATIONS = {
     "Edit": "Editeaza",
     "Saving...": "Se salveaza...",
     "Save Customer": "Salveaza client",
+    "Contacts Foundation": "Fundatie contacte",
+    "Customer contact records": "Inregistrari contacte client",
+    "Manage named contacts for each customer with role, email, phone and primary contact status.": "Gestionati contactele nominale pentru fiecare client cu rol, email, telefon si stare contact principal.",
+    "Add Contact": "Adauga contact",
+    "Total Contacts": "Total contacte",
+    "Primary Contacts": "Contacte principale",
+    "All contacts": "Toate contactele",
+    "No contacts yet.": "Nu exista contacte.",
+    "Edit Contact": "Editare contact",
+    "New Contact": "Contact nou",
+    "Add contact": "Adauga contact",
+    "Contact reference": "Referinta contact",
+    "First name": "Prenume",
+    "Last name": "Nume",
+    "Mobile": "Mobil",
+    "Contact type": "Tip contact",
+    "Primary contact": "Contact principal",
+    "Save Contact": "Salveaza contactul",
     "Buildings and Sites": "Cladiri si site-uri",
     "Customer buildings and site records": "Inregistrari cladiri si site-uri client",
     "Manage sites, access notes, contacts and compliance notes for each customer.": "Gestionati site-uri, note de acces, contacte si note de conformitate pentru fiecare client.",
@@ -607,6 +631,9 @@ const PERMISSIONS = {
   CUSTOMERS_VIEW: "customers:view",
   CUSTOMERS_CREATE: "customers:create",
   CUSTOMERS_EDIT: "customers:edit",
+  CONTACTS_VIEW: "contacts:view",
+  CONTACTS_CREATE: "contacts:create",
+  CONTACTS_EDIT: "contacts:edit",
   BUILDINGS_VIEW: "buildings:view",
   BUILDINGS_CREATE: "buildings:create",
   BUILDINGS_EDIT: "buildings:edit",
@@ -656,6 +683,7 @@ const PERMISSIONS = {
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
   { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
+  { label: "Contacts", icon: Users, permission: PERMISSIONS.CONTACTS_VIEW },
   { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
@@ -689,6 +717,21 @@ const emptyCustomer = {
   primary_contact_name: "",
   primary_contact_email: "",
   primary_contact_phone: "",
+  notes: ""
+};
+
+const emptyContact = {
+  customer_id: "",
+  contact_reference: "",
+  first_name: "",
+  last_name: "",
+  job_title: "",
+  email: "",
+  phone: "",
+  mobile: "",
+  contact_type: "Primary",
+  status: "Active",
+  is_primary: false,
   notes: ""
 };
 
@@ -1089,7 +1132,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -1126,7 +1169,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v32 Customer Portal</p>
+            <p className="eyebrow">v33 Contacts</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -1143,6 +1186,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         </header>
 
         {activePage === "Customers" ? <CustomersPage user={user} /> : null}
+        {activePage === "Contacts" ? <ContactsPage user={user} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
@@ -1163,7 +1207,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -1726,6 +1770,290 @@ function CustomersPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Customer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ContactsPage({ user }) {
+  const [contacts, setContacts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    primary_contacts: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState(null);
+  const [form, setForm] = useState(emptyContact);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.CONTACTS_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.CONTACTS_EDIT);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+
+  async function loadContacts() {
+    const [summaryData, contactsData, customersData] = await Promise.all([
+      getContactSummary(),
+      listContacts({ search, status, customer_id: customerId }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setContacts(contactsData.contacts || []);
+    setCustomers(customersData.customers || []);
+  }
+
+  useEffect(() => {
+    loadContacts().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadContacts();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingContact(null);
+    setForm({
+      ...emptyContact,
+      customer_id: customerId || customers[0]?.id || ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(contact) {
+    setEditingContact(contact);
+    setForm({
+      ...emptyContact,
+      ...contact,
+      customer_id: contact.customer_id || "",
+      is_primary: Boolean(contact.is_primary)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingContact(null);
+    setForm(emptyContact);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveContact(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: Number(form.customer_id)
+      };
+
+      if (editingContact) {
+        await updateContact(editingContact.id, payload);
+      } else {
+        await createContact(payload);
+      }
+
+      closeForm();
+      await loadContacts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summaryCards = [
+    { label: "Total Contacts", value: summary.total || 0 },
+    { label: "Active", value: summary.active || 0 },
+    { label: "Inactive", value: summary.inactive || 0 },
+    { label: "Primary Contacts", value: summary.primary_contacts || 0 }
+  ];
+
+  return (
+    <div className="contacts-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Contacts Foundation</p>
+          <h2>Customer contact records</h2>
+          <p>Manage named contacts for each customer with role, email, phone and primary contact status.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm}>
+            <Plus size={18} />
+            Add Contact
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search contacts, customers or email..." />
+        </div>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All contacts</option>
+          <option>Active</option>
+          <option>Inactive</option>
+        </select>
+
+        <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+          <option value="">All customers</option>
+          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Contacts</strong>
+          <span>{contacts.length} shown</span>
+        </div>
+
+        {contacts.length ? (
+          <div className="customer-list">
+            {contacts.map((contact) => (
+              <div className="customer-row contact-row" key={contact.id}>
+                <div>
+                  <strong>{contact.first_name} {contact.last_name || ""}</strong>
+                  <span>{contact.contact_reference}</span>
+                </div>
+                <div>
+                  <span>{contact.customer_name}</span>
+                  <span>{contact.job_title || contact.contact_type}</span>
+                </div>
+                <div>
+                  <span>{contact.email || "No email"}</span>
+                  <span>{contact.mobile || contact.phone || "No phone"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(contact.status)}`}>{contact.status}</span>
+                  <span>{contact.is_primary ? "Primary contact" : "Secondary contact"}</span>
+                </div>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(contact)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No contacts yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveContact}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingContact ? "Edit Contact" : "New Contact"}</p>
+                <h2>{editingContact ? editingContact.contact_reference : "Add contact"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)} required>
+                  <option value="">Select customer</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+                </select>
+              </label>
+
+              <Field label="Contact reference" value={form.contact_reference} onChange={(value) => updateField("contact_reference", value)} placeholder={editingContact ? "" : "Auto-generated if blank"} />
+              <Field label="First name" value={form.first_name} onChange={(value) => updateField("first_name", value)} required />
+              <Field label="Last name" value={form.last_name} onChange={(value) => updateField("last_name", value)} />
+              <Field label="Job title" value={form.job_title} onChange={(value) => updateField("job_title", value)} />
+              <Field label="Email" value={form.email} onChange={(value) => updateField("email", value)} type="email" />
+              <Field label="Phone" value={form.phone} onChange={(value) => updateField("phone", value)} />
+              <Field label="Mobile" value={form.mobile} onChange={(value) => updateField("mobile", value)} />
+
+              <label>
+                Contact type
+                <select value={form.contact_type} onChange={(event) => updateField("contact_type", event.target.value)}>
+                  <option>Primary</option>
+                  <option>Site</option>
+                  <option>Finance</option>
+                  <option>Compliance</option>
+                  <option>Emergency</option>
+                  <option>Other</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </label>
+
+              <label className="inline-toggle">
+                <input type="checkbox" checked={form.is_primary} onChange={(event) => updateField("is_primary", event.target.checked)} />
+                Primary contact
+              </label>
+
+              <label className="wide-field">
+                Notes
+                <textarea value={form.notes || ""} onChange={(event) => updateField("notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            {editingContact ? (
+              <RecordHistoryPanel entityType="contact" entityId={editingContact.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Contact"}
               </button>
             </div>
           </form>
