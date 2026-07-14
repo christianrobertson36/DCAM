@@ -145,6 +145,37 @@ export async function updateContact(id, payload) {
   });
 }
 
+export async function getPipelineSummary() {
+  return apiRequest("/api/pipeline/summary");
+}
+
+export async function listPipelineOpportunities(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "stage", "customer_id", "owner_user_id"].forEach((key) => {
+    if (params[key]) {
+      query.set(key, params[key]);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/pipeline${suffix}`);
+}
+
+export async function createPipelineOpportunity(payload) {
+  return apiRequest("/api/pipeline", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updatePipelineOpportunity(id, payload) {
+  return apiRequest(`/api/pipeline/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getBuildingSummary() {
   return apiRequest("/api/buildings/summary");
 }

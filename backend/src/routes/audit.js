@@ -9,6 +9,7 @@ const router = express.Router();
 const ENTITY_PERMISSIONS = Object.freeze({
   customer: PERMISSIONS.CUSTOMERS_VIEW,
   contact: PERMISSIONS.CONTACTS_VIEW,
+  pipeline_opportunity: PERMISSIONS.PIPELINE_VIEW,
   building: PERMISSIONS.BUILDINGS_VIEW,
   asset: PERMISSIONS.ASSETS_VIEW,
   work_order: PERMISSIONS.WORK_ORDERS_VIEW,

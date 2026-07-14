@@ -27,6 +27,7 @@ import {
   createCustomer,
   createFormTemplate,
   createMaintenancePlan,
+  createPipelineOpportunity,
   createReport,
   createTechnicianJobSignature,
   createTechnicianJobChecklistItem,
@@ -50,6 +51,7 @@ import {
   getFormTemplateSummary,
   getMaintenancePlanSummary,
   getMe,
+  getPipelineSummary,
   getReportSummary,
   getSampleDataStatus,
   getScheduleSummary,
@@ -59,6 +61,7 @@ import {
   installSampleData,
   listRecordHistory,
   listMaintenancePlans,
+  listPipelineOpportunities,
   listAssetFiles,
   listAssetHistory,
   listAssetOptions,
@@ -91,6 +94,7 @@ import {
   updateBuilding,
   updateCustomer,
   updateMaintenancePlan,
+  updatePipelineOpportunity,
   updateTechnicianJobChecklistItem,
   updateScheduleAssignment,
   updateStaffProfile,
@@ -146,6 +150,7 @@ const TRANSLATIONS = {
     "v31 Certificates": "v31 Certificate",
     "v32 Customer Portal": "v32 Portal client",
     "v33 Contacts": "v33 Contacte",
+    "v34 Pipeline": "v34 Pipeline",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -157,6 +162,7 @@ const TRANSLATIONS = {
     "Dashboard": "Panou",
     "Customers": "Clienti",
     "Contacts": "Contacte",
+    "Pipeline": "Pipeline",
     "Buildings": "Cladiri",
     "Assets": "Active",
     "Work Orders": "Comenzi de lucru",
@@ -251,6 +257,35 @@ const TRANSLATIONS = {
     "Contact type": "Tip contact",
     "Primary contact": "Contact principal",
     "Save Contact": "Salveaza contactul",
+    "CRM Pipeline Foundation": "Fundatie pipeline CRM",
+    "Sales opportunities and pipeline tracking": "Oportunitati de vanzare si urmarire pipeline",
+    "Track customer opportunities by stage, value, probability, owner and next action.": "Urmariti oportunitatile clientilor dupa etapa, valoare, probabilitate, responsabil si urmatoarea actiune.",
+    "Add Opportunity": "Adauga oportunitate",
+    "Total Opportunities": "Total oportunitati",
+    "Open Value": "Valoare deschisa",
+    "Won": "Castigat",
+    "Lost": "Pierdut",
+    "All opportunities": "Toate oportunitatile",
+    "All stages": "Toate etapele",
+    "Lead": "Lead",
+    "Qualified": "Calificat",
+    "Proposal": "Propunere",
+    "Negotiation": "Negociere",
+    "Closed": "Inchis",
+    "No opportunities yet.": "Nu exista oportunitati.",
+    "Edit Opportunity": "Editare oportunitate",
+    "New Opportunity": "Oportunitate noua",
+    "Add opportunity": "Adauga oportunitate",
+    "Opportunity reference": "Referinta oportunitate",
+    "Opportunity name": "Nume oportunitate",
+    "Stage": "Etapa",
+    "Estimated value": "Valoare estimata",
+    "Probability": "Probabilitate",
+    "Expected close date": "Data estimata inchidere",
+    "Owner": "Responsabil",
+    "Source": "Sursa",
+    "Next action": "Urmatoarea actiune",
+    "Save Opportunity": "Salveaza oportunitatea",
     "Buildings and Sites": "Cladiri si site-uri",
     "Customer buildings and site records": "Inregistrari cladiri si site-uri client",
     "Manage sites, access notes, contacts and compliance notes for each customer.": "Gestionati site-uri, note de acces, contacte si note de conformitate pentru fiecare client.",
@@ -634,6 +669,9 @@ const PERMISSIONS = {
   CONTACTS_VIEW: "contacts:view",
   CONTACTS_CREATE: "contacts:create",
   CONTACTS_EDIT: "contacts:edit",
+  PIPELINE_VIEW: "pipeline:view",
+  PIPELINE_CREATE: "pipeline:create",
+  PIPELINE_EDIT: "pipeline:edit",
   BUILDINGS_VIEW: "buildings:view",
   BUILDINGS_CREATE: "buildings:create",
   BUILDINGS_EDIT: "buildings:edit",
@@ -684,6 +722,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
   { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
   { label: "Contacts", icon: Users, permission: PERMISSIONS.CONTACTS_VIEW },
+  { label: "Pipeline", icon: SlidersHorizontal, permission: PERMISSIONS.PIPELINE_VIEW },
   { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
   { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
   { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
@@ -732,6 +771,22 @@ const emptyContact = {
   contact_type: "Primary",
   status: "Active",
   is_primary: false,
+  notes: ""
+};
+
+const emptyOpportunity = {
+  customer_id: "",
+  contact_id: "",
+  opportunity_reference: "",
+  opportunity_name: "",
+  stage: "Lead",
+  status: "Open",
+  estimated_value: "",
+  probability: 0,
+  expected_close_date: "",
+  owner_user_id: "",
+  source: "",
+  next_action: "",
   notes: ""
 };
 
@@ -1132,7 +1187,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
     ? activePage
     : "DCAM Operating System";
 
@@ -1169,7 +1224,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <p className="eyebrow">v33 Contacts</p>
+            <p className="eyebrow">v34 Pipeline</p>
             <h1>{pageTitle}</h1>
           </div>
 
@@ -1187,6 +1242,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
 
         {activePage === "Customers" ? <CustomersPage user={user} /> : null}
         {activePage === "Contacts" ? <ContactsPage user={user} /> : null}
+        {activePage === "Pipeline" ? <PipelinePage user={user} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
@@ -1207,7 +1263,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -2054,6 +2110,344 @@ function ContactsPage({ user }) {
               <button className="primary-action" type="submit" disabled={busy}>
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Contact"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PipelinePage({ user }) {
+  const [opportunities, setOpportunities] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    open: 0,
+    won: 0,
+    lost: 0,
+    open_value: 0
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [stage, setStage] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingOpportunity, setEditingOpportunity] = useState(null);
+  const [form, setForm] = useState(emptyOpportunity);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.PIPELINE_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.PIPELINE_EDIT);
+  const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
+  const canViewContacts = hasPermission(user, PERMISSIONS.CONTACTS_VIEW);
+  const canViewStaff = hasPermission(user, PERMISSIONS.STAFF_VIEW);
+
+  async function loadPipeline() {
+    const [summaryData, pipelineData, customersData, contactsData, staffData] = await Promise.all([
+      getPipelineSummary(),
+      listPipelineOpportunities({ search, status, stage, customer_id: customerId }),
+      canViewCustomers ? listCustomers() : Promise.resolve({ customers: [] }),
+      canViewContacts ? listContacts({ customer_id: customerId }) : Promise.resolve({ contacts: [] }),
+      canViewStaff ? listStaffUsers() : Promise.resolve({ users: [] })
+    ]);
+
+    setSummary(summaryData.summary || {});
+    setOpportunities(pipelineData.opportunities || []);
+    setCustomers(customersData.customers || []);
+    setContacts(contactsData.contacts || []);
+    setStaffUsers(staffData.users || []);
+  }
+
+  useEffect(() => {
+    loadPipeline().catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadPipeline();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingOpportunity(null);
+    setForm({
+      ...emptyOpportunity,
+      customer_id: customerId || customers[0]?.id || "",
+      owner_user_id: ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function openEditForm(opportunity) {
+    setEditingOpportunity(opportunity);
+    setForm({
+      ...emptyOpportunity,
+      ...opportunity,
+      customer_id: opportunity.customer_id || "",
+      contact_id: opportunity.contact_id || "",
+      owner_user_id: opportunity.owner_user_id || "",
+      estimated_value: opportunity.estimated_value || "",
+      probability: opportunity.probability || 0,
+      expected_close_date: formatDateForInput(opportunity.expected_close_date)
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingOpportunity(null);
+    setForm(emptyOpportunity);
+  }
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function saveOpportunity(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...form,
+        customer_id: Number(form.customer_id),
+        contact_id: form.contact_id ? Number(form.contact_id) : null,
+        owner_user_id: form.owner_user_id ? Number(form.owner_user_id) : null,
+        estimated_value: Number(form.estimated_value || 0),
+        probability: Number(form.probability || 0)
+      };
+
+      if (editingOpportunity) {
+        await updatePipelineOpportunity(editingOpportunity.id, payload);
+      } else {
+        await createPipelineOpportunity(payload);
+      }
+
+      closeForm();
+      await loadPipeline();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const visibleContacts = contacts.filter((contact) => !form.customer_id || String(contact.customer_id) === String(form.customer_id));
+  const summaryCards = [
+    { label: "Total Opportunities", value: summary.total || 0 },
+    { label: "Open", value: summary.open || 0 },
+    { label: "Open Value", value: Number(summary.open_value || 0).toLocaleString() },
+    { label: "Won", value: summary.won || 0 },
+    { label: "Lost", value: summary.lost || 0 }
+  ];
+
+  return (
+    <div className="pipeline-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">CRM Pipeline Foundation</p>
+          <h2>Sales opportunities and pipeline tracking</h2>
+          <p>Track customer opportunities by stage, value, probability, owner and next action.</p>
+        </div>
+
+        {canCreate ? (
+          <button className="primary-action" onClick={openCreateForm} disabled={!customers.length}>
+            <Plus size={18} />
+            Add Opportunity
+          </button>
+        ) : null}
+      </section>
+
+      {canCreate && !customers.length ? (
+        <div className="login-error">Add a customer first before creating opportunities.</div>
+      ) : null}
+
+      <section className="mini-card-grid">
+        {summaryCards.map((card) => (
+          <article className="mini-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar assets-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search opportunities or customers..." />
+        </div>
+
+        <select value={stage} onChange={(event) => setStage(event.target.value)}>
+          <option value="">All stages</option>
+          <option>Lead</option>
+          <option>Qualified</option>
+          <option>Proposal</option>
+          <option>Negotiation</option>
+          <option>Closed</option>
+        </select>
+
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All opportunities</option>
+          <option>Open</option>
+          <option>Won</option>
+          <option>Lost</option>
+          <option>On Hold</option>
+        </select>
+
+        <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+          <option value="">All customers</option>
+          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+        </select>
+
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Pipeline</strong>
+          <span>{opportunities.length} shown</span>
+        </div>
+
+        {opportunities.length ? (
+          <div className="customer-list">
+            {opportunities.map((opportunity) => (
+              <div className="customer-row pipeline-row" key={opportunity.id}>
+                <div>
+                  <strong>{opportunity.opportunity_name}</strong>
+                  <span>{opportunity.opportunity_reference}</span>
+                </div>
+                <div>
+                  <span>{opportunity.customer_name}</span>
+                  <span>{opportunity.contact_name || "No contact"}</span>
+                </div>
+                <div>
+                  <span>{opportunity.stage} / {opportunity.probability}%</span>
+                  <span>{Number(opportunity.estimated_value || 0).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(opportunity.status)}`}>{opportunity.status}</span>
+                  <span>{opportunity.expected_close_date ? `Close: ${formatDateForDisplay(opportunity.expected_close_date)}` : "No close date"}</span>
+                </div>
+                <div className="row-actions">
+                  {canEdit ? (
+                    <button className="secondary-button" type="button" onClick={() => openEditForm(opportunity)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No opportunities yet.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form" onSubmit={saveOpportunity}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingOpportunity ? "Edit Opportunity" : "New Opportunity"}</p>
+                <h2>{editingOpportunity ? editingOpportunity.opportunity_reference : "Add opportunity"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)} required>
+                  <option value="">Select customer</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.company_name}</option>)}
+                </select>
+              </label>
+
+              <label>
+                Contact
+                <select value={form.contact_id} onChange={(event) => updateField("contact_id", event.target.value)}>
+                  <option value="">No contact</option>
+                  {visibleContacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.first_name} {contact.last_name || ""}</option>)}
+                </select>
+              </label>
+
+              <Field label="Opportunity reference" value={form.opportunity_reference} onChange={(value) => updateField("opportunity_reference", value)} placeholder={editingOpportunity ? "" : "Auto-generated if blank"} />
+              <Field label="Opportunity name" value={form.opportunity_name} onChange={(value) => updateField("opportunity_name", value)} required />
+
+              <label>
+                Stage
+                <select value={form.stage} onChange={(event) => updateField("stage", event.target.value)}>
+                  <option>Lead</option>
+                  <option>Qualified</option>
+                  <option>Proposal</option>
+                  <option>Negotiation</option>
+                  <option>Closed</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                  <option>Open</option>
+                  <option>Won</option>
+                  <option>Lost</option>
+                  <option>On Hold</option>
+                </select>
+              </label>
+
+              <Field label="Estimated value" value={form.estimated_value} onChange={(value) => updateField("estimated_value", value)} type="number" />
+              <Field label="Probability" value={form.probability} onChange={(value) => updateField("probability", value)} type="number" />
+              <Field label="Expected close date" value={form.expected_close_date} onChange={(value) => updateField("expected_close_date", value)} type="date" />
+
+              <label>
+                Owner
+                <select value={form.owner_user_id} onChange={(event) => updateField("owner_user_id", event.target.value)}>
+                  <option value="">No owner</option>
+                  {staffUsers.map((staffUser) => <option key={staffUser.id} value={staffUser.id}>{staffUser.name} - {staffUser.role}</option>)}
+                </select>
+              </label>
+
+              <Field label="Source" value={form.source} onChange={(value) => updateField("source", value)} />
+
+              <label className="wide-field">
+                Next action
+                <textarea value={form.next_action || ""} onChange={(event) => updateField("next_action", event.target.value)} rows={3} />
+              </label>
+
+              <label className="wide-field">
+                Notes
+                <textarea value={form.notes || ""} onChange={(event) => updateField("notes", event.target.value)} rows={3} />
+              </label>
+            </div>
+
+            {editingOpportunity ? (
+              <RecordHistoryPanel entityType="pipeline_opportunity" entityId={editingOpportunity.id} />
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              <button className="primary-action" type="submit" disabled={busy}>
+                <Save size={18} />
+                {busy ? "Saving..." : "Save Opportunity"}
               </button>
             </div>
           </form>
