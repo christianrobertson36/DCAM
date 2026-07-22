@@ -1253,7 +1253,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v36 User Administration</p>
+            <p className="eyebrow">v38 Operational Alerts</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1264,9 +1264,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
               <input aria-label="Global search" placeholder="Search DCAM" disabled />
               <span>Coming soon</span>
             </label>
-            <button className="topbar-icon-button" aria-label="Notifications coming soon" disabled>
-              <Bell size={18} />
-            </button>
+            <AlertsCentre user={user} onNavigate={selectPage} />
             <div className="user-panel">
             <div>
               <strong>{user.name}</strong>
@@ -1308,6 +1306,148 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       </main>
     </div>
   );
+}
+
+function AlertsCentre({ user, onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshedAt, setRefreshedAt] = useState(null);
+
+  async function loadAlerts() {
+    setLoading(true);
+    setError("");
+
+    const requests = [
+      ["assets", PERMISSIONS.ASSETS_VIEW, getAssetSummary],
+      ["workOrders", PERMISSIONS.WORK_ORDERS_VIEW, getWorkOrderSummary],
+      ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
+      ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
+      ["certificates", PERMISSIONS.CERTIFICATES_VIEW, getCertificateSummary],
+      ["staff", PERMISSIONS.STAFF_VIEW, () => listStaffProfiles()]
+    ].filter(([, permission]) => hasPermission(user, permission));
+
+    try {
+      if (!requests.length && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
+        const portal = await getCustomerPortalDashboard();
+        const openWork = Number(portal.summary?.open_work_orders || 0);
+        setAlerts(openWork ? [{ id: "portal-open-work", severity: "warning", title: `${openWork} open work order${openWork === 1 ? "" : "s"}`, text: "Open work is visible in your customer portal.", page: "Customer Portal" }] : []);
+      } else {
+        const results = await Promise.allSettled(requests.map(([, , request]) => request()));
+        const data = {};
+        const failed = [];
+
+        results.forEach((result, index) => {
+          const key = requests[index][0];
+          if (result.status === "fulfilled") data[key] = result.value;
+          else failed.push(key);
+        });
+
+        setAlerts(buildOperationalAlerts(data));
+        if (failed.length) setError("Some alert sources are temporarily unavailable.");
+      }
+
+      setRefreshedAt(new Date());
+    } catch (err) {
+      setError(err.message || "Alerts could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAlerts();
+  }, [user.id]);
+
+  function openPage(page) {
+    onNavigate(page);
+    setOpen(false);
+  }
+
+  return (
+    <div className="alerts-centre">
+      <button
+        className={`topbar-icon-button ${open ? "active" : ""}`}
+        aria-label={`${alerts.length} operational alerts`}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Bell size={18} />
+        {alerts.length ? <span className="alert-count">{alerts.length > 9 ? "9+" : alerts.length}</span> : null}
+      </button>
+
+      {open ? (
+        <section className="alerts-panel" aria-label="Operational alerts">
+          <div className="alerts-panel-header">
+            <div>
+              <p className="eyebrow">Operational alerts</p>
+              <h3>Needs attention</h3>
+            </div>
+            <button className="icon-button" type="button" aria-label="Close alerts" onClick={() => setOpen(false)}>
+              <X size={18} />
+            </button>
+          </div>
+
+          {error ? <div className="alerts-error">{error}</div> : null}
+
+          <div className="alerts-list">
+            {loading ? (
+              <div className="alerts-empty"><RefreshCw size={20} className="spin" /><span>Checking permitted modules...</span></div>
+            ) : alerts.length ? alerts.map((alert) => (
+              <button className="alert-item" type="button" key={alert.id} onClick={() => openPage(alert.page)}>
+                <span className={`alert-severity ${alert.severity}`} />
+                <span>
+                  <strong>{alert.title}</strong>
+                  <small>{alert.text}</small>
+                </span>
+              </button>
+            )) : (
+              <div className="alerts-empty">
+                <ClipboardCheck size={24} />
+                <strong>No current alerts</strong>
+                <span>Nothing in your permitted modules needs attention.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="alerts-panel-footer">
+            <small>{refreshedAt ? `Checked ${refreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Not checked yet"}</small>
+            <button type="button" onClick={loadAlerts} disabled={loading}>
+              <RefreshCw size={15} className={loading ? "spin" : ""} /> Refresh
+            </button>
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function buildOperationalAlerts(data) {
+  const alerts = [];
+  const summary = (key) => data[key]?.summary || {};
+  const add = (condition, alert) => {
+    if (Number(condition || 0) > 0) alerts.push(alert);
+  };
+  const workOrders = summary("workOrders");
+  const maintenance = summary("maintenance");
+  const compliance = summary("compliance");
+  const certificates = summary("certificates");
+  const assets = summary("assets");
+  const expiringQualifications = (data.staff?.staff_profiles || []).reduce((total, profile) => total + Number(profile.expiring_qualifications || 0), 0);
+
+  add(workOrders.overdue, { id: "work-overdue", severity: "danger", title: `${workOrders.overdue} overdue work order${workOrders.overdue === 1 ? "" : "s"}`, text: "Review due dates and assignments.", page: "Work Orders" });
+  add(maintenance.overdue, { id: "maintenance-overdue", severity: "danger", title: `${maintenance.overdue} maintenance plan${maintenance.overdue === 1 ? " is" : "s are"} overdue`, text: "Planned maintenance requires action.", page: "Maintenance Plans" });
+  add(compliance.failed, { id: "compliance-failed", severity: "danger", title: `${compliance.failed} failed compliance service${compliance.failed === 1 ? "" : "s"}`, text: "Review outcomes and corrective action.", page: "Compliance Services" });
+  add(certificates.expired, { id: "certificates-expired", severity: "danger", title: `${certificates.expired} expired certificate${certificates.expired === 1 ? "" : "s"}`, text: "Review renewal or replacement status.", page: "Certificates" });
+  add(compliance.defects, { id: "compliance-defects", severity: "warning", title: `${compliance.defects} service${compliance.defects === 1 ? " has" : "s have"} defects`, text: "Defects have been recorded for follow-up.", page: "Compliance Services" });
+  add(maintenance.due_soon, { id: "maintenance-due", severity: "warning", title: `${maintenance.due_soon} maintenance plan${maintenance.due_soon === 1 ? " is" : "s are"} due soon`, text: "Due within the next 30 days.", page: "Maintenance Plans" });
+  add(certificates.expiring_soon, { id: "certificates-expiring", severity: "warning", title: `${certificates.expiring_soon} certificate${certificates.expiring_soon === 1 ? "" : "s"} expiring soon`, text: "Expiry is within the next 30 days.", page: "Certificates" });
+  add(assets.service_due, { id: "assets-service", severity: "warning", title: `${assets.service_due} asset${assets.service_due === 1 ? " is" : "s are"} service due`, text: "Review the asset register and maintenance plan.", page: "Assets" });
+  add(assets.out_of_service, { id: "assets-offline", severity: "warning", title: `${assets.out_of_service} asset${assets.out_of_service === 1 ? " is" : "s are"} out of service`, text: "Operational availability may be affected.", page: "Assets" });
+  add(expiringQualifications, { id: "qualifications-expiring", severity: "warning", title: `${expiringQualifications} staff qualification${expiringQualifications === 1 ? "" : "s"} expiring`, text: "Expiry is within 60 days or has passed.", page: "People" });
+
+  return alerts;
 }
 
 function DashboardPage({ user }) {
