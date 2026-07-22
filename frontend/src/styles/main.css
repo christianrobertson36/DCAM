@@ -1339,6 +1339,143 @@ h1 {
   }
 }
 
+.users-filter {
+  grid-template-columns: minmax(260px, 1fr) 220px 180px auto;
+}
+
+.user-summary-grid {
+  margin-bottom: 18px;
+}
+
+.user-row {
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+}
+
+.user-row strong::before {
+  content: "";
+}
+
+.roles-card {
+  margin-top: 20px;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+
+.role-card {
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.role-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+
+.role-card > div:first-child span,
+.field-help,
+.password-reset-panel span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.permission-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.permission-chip {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.user-admin-form {
+  width: min(900px, 100%);
+}
+
+.user-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field-help {
+  font-weight: 600;
+}
+
+.password-reset-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  background: #fff7ed;
+}
+
+.password-reset-panel strong,
+.password-reset-panel span {
+  display: block;
+}
+
+.password-reset-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.password-reset-controls input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 12px 13px;
+  font: inherit;
+}
+
+.user-audit-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.audit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .users-filter,
+  .user-row,
+  .role-grid,
+  .password-reset-controls,
+  .audit-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .buildings-filter {
   grid-template-columns: 1fr 220px 190px auto;
 }

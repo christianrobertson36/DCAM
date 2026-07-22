@@ -682,3 +682,43 @@ export async function deleteSampleData() {
 export async function listRecordHistory(entityType, entityId) {
   return apiRequest(`/api/audit/${entityType}/${entityId}`);
 }
+
+export async function listAdminUsers(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "role", "status"].forEach((key) => {
+    if (params[key]) query.set(key, params[key]);
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/admin/users${suffix}`);
+}
+
+export async function listAdminRoles() {
+  return apiRequest("/api/admin/users/roles");
+}
+
+export async function createAdminUser(payload) {
+  return apiRequest("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateAdminUser(id, payload) {
+  return apiRequest(`/api/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function resetAdminUserPassword(id, password) {
+  return apiRequest(`/api/admin/users/${id}/reset-password`, {
+    method: "POST",
+    body: JSON.stringify({ password })
+  });
+}
+
+export async function listAdminUserAudit(id) {
+  return apiRequest(`/api/admin/users/${id}/audit`);
+}

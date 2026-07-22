@@ -22,6 +22,7 @@ import {
 import { getVisibleNavigation } from "./navigation";
 import {
   createAsset,
+  createAdminUser,
   createAssetOption,
   createBuilding,
   createCertificate,
@@ -69,6 +70,9 @@ import {
   listAssetHistory,
   listAssetOptions,
   listAssets,
+  listAdminRoles,
+  listAdminUserAudit,
+  listAdminUsers,
   listBuildings,
   listCertificates,
   listComplianceServices,
@@ -87,6 +91,7 @@ import {
   listWorkOrders,
   login,
   updateAsset,
+  updateAdminUser,
   updateAssetOption,
   updateCertificate,
   updateComplianceService,
@@ -103,7 +108,8 @@ import {
   updateStaffProfile,
   updateTechnicianJob,
   updateWorkOrder,
-  uploadTechnicianJobFile
+  uploadTechnicianJobFile,
+  resetAdminUserPassword
 } from "./api";
 import "./styles/main.css";
 
@@ -718,6 +724,9 @@ const PERMISSIONS = {
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
   TECHNICIAN_JOBS_MANAGE: "technician_jobs:manage",
+  USERS_VIEW: "users:view",
+  USERS_MANAGE: "users:manage",
+  ROLES_VIEW: "roles:view",
   SETTINGS_ADMIN: "settings:admin"
 };
 
@@ -1174,7 +1183,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings"
+  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
     ? activePage
     : "DCAM Operating System";
 
@@ -1243,7 +1252,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v35 Navigation</p>
+            <p className="eyebrow">v36 User Administration</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1293,7 +1302,8 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
             user={user}
           />
         ) : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" ? <DashboardPage /> : null}
+        {activePage === "Users & Access" ? <UsersAccessPage currentUser={user} /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage /> : null}
       </main>
     </div>
   );
@@ -6928,6 +6938,266 @@ function TechnicianJobsPage({ user }) {
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Job"}
               </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const emptyAdminUser = {
+  name: "",
+  email: "",
+  role: "Technician",
+  status: "active",
+  password: ""
+};
+
+function UsersAccessPage({ currentUser }) {
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [form, setForm] = useState(emptyAdminUser);
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const canManage = hasPermission(currentUser, PERMISSIONS.USERS_MANAGE);
+  const canViewRoles = hasPermission(currentUser, PERMISSIONS.ROLES_VIEW);
+
+  async function loadData(filters = {}) {
+    const [usersData, rolesData] = await Promise.all([
+      listAdminUsers(filters),
+      canViewRoles ? listAdminRoles() : Promise.resolve({ roles: [] })
+    ]);
+
+    setUsers(usersData.users || []);
+    setRoles(rolesData.roles || []);
+  }
+
+  useEffect(() => {
+    loadData().catch((err) => setError(err.message));
+  }, []);
+
+  async function applyFilters(event) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      await loadData({ search, role: roleFilter, status: statusFilter });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openCreate() {
+    setEditingUser(null);
+    setForm(emptyAdminUser);
+    setAuditEvents([]);
+    setTemporaryPassword("");
+    setSuccess("");
+    setError("");
+    setFormOpen(true);
+  }
+
+  async function openEdit(user) {
+    setEditingUser(user);
+    setForm({ ...emptyAdminUser, ...user, password: "" });
+    setTemporaryPassword("");
+    setSuccess("");
+    setError("");
+    setFormOpen(true);
+
+    try {
+      const data = await listAdminUserAudit(user.id);
+      setAuditEvents(data.events || []);
+    } catch (err) {
+      setAuditEvents([]);
+      setError(err.message);
+    }
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingUser(null);
+    setForm(emptyAdminUser);
+    setAuditEvents([]);
+    setTemporaryPassword("");
+  }
+
+  async function saveUser(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      if (editingUser) {
+        await updateAdminUser(editingUser.id, form);
+      } else {
+        await createAdminUser(form);
+      }
+
+      await loadData({ search, role: roleFilter, status: statusFilter });
+      setSuccess(editingUser ? "User details updated." : "User account created.");
+
+      if (!editingUser) closeForm();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetPassword() {
+    if (!editingUser || temporaryPassword.length < 12) return;
+
+    setBusy(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await resetAdminUserPassword(editingUser.id, temporaryPassword);
+      setTemporaryPassword("");
+      setSuccess("Temporary password saved. Share it securely with the user.");
+      const data = await listAdminUserAudit(editingUser.id);
+      setAuditEvents(data.events || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const summary = {
+    total: users.length,
+    active: users.filter((user) => user.status === "active").length,
+    inactive: users.filter((user) => user.status === "inactive").length,
+    admins: users.filter((user) => user.role === "Super Administrator").length
+  };
+
+  return (
+    <div className="users-access-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Administration</p>
+          <h2>Users, roles and effective access</h2>
+          <p>Control user accounts and review exactly which permissions each DCAM role receives.</p>
+        </div>
+        {canManage ? (
+          <button className="primary-action" onClick={openCreate}>
+            <Plus size={18} /> Add User
+          </button>
+        ) : null}
+      </section>
+
+      <section className="settings-summary-grid user-summary-grid">
+        {[
+          { label: "Users", value: summary.total },
+          { label: "Active", value: summary.active },
+          { label: "Inactive", value: summary.inactive },
+          { label: "Super Admins", value: summary.admins }
+        ].map((card) => (
+          <article className="mini-card" key={card.label}><span>{card.label}</span><strong>{card.value}</strong></article>
+        ))}
+      </section>
+
+      <form className="filter-bar users-filter" onSubmit={applyFilters}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name or email..." />
+        </div>
+        <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+          <option value="">All roles</option>
+          {roles.map((role) => <option key={role.role} value={role.role}>{role.role}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="form-error">{error}</div> : null}
+      {success && !formOpen ? <div className="settings-success">{success}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header"><strong>User Accounts</strong><span>{users.length} shown</span></div>
+        <div className="customer-list">
+          {users.map((user) => (
+            <button className="customer-row user-row" key={user.id} onClick={() => openEdit(user)}>
+              <div><strong>{user.name}</strong><span>{user.email}</span></div>
+              <div><span>{user.role}</span><span>{user.permissions.length} permissions</span></div>
+              <div><span>Last login</span><span>{user.last_login_at ? formatDateForDisplay(user.last_login_at) : "Never"}</span></div>
+              <div><span className={`status-badge ${user.status}`}>{user.status}</span></div>
+            </button>
+          ))}
+          {!users.length ? <div className="empty-state">No users match the selected filters.</div> : null}
+        </div>
+      </section>
+
+      {canViewRoles ? (
+        <section className="table-card roles-card">
+          <div className="table-header"><strong>Role Permission Matrix</strong><span>{roles.length} roles</span></div>
+          <div className="role-grid">
+            {roles.map((role) => (
+              <article className="role-card" key={role.role}>
+                <div><strong>{role.role}</strong><span>{role.permissions.length} permissions</span></div>
+                <div className="permission-chip-list">
+                  {role.permissions.map((permission) => <span className="permission-chip" key={permission}>{permission}</span>)}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form user-admin-form" onSubmit={saveUser}>
+            <div className="form-header">
+              <div><p className="eyebrow">{editingUser ? "Edit User" : "New User"}</p><h2>{editingUser?.name || "Create user account"}</h2></div>
+              <button className="icon-button" type="button" onClick={closeForm}><X size={18} /></button>
+            </div>
+
+            {error ? <div className="form-error">{error}</div> : null}
+            {success ? <div className="settings-success">{success}</div> : null}
+
+            <fieldset className="form-grid user-fields" disabled={!canManage}>
+              <Field label="Name" value={form.name} onChange={(value) => setForm((current) => ({ ...current, name: value }))} required />
+              <Field label="Email" value={form.email} onChange={(value) => setForm((current) => ({ ...current, email: value }))} required />
+              <label>Role<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>{roles.map((role) => <option key={role.role}>{role.role}</option>)}</select></label>
+              <label>Status<select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+              {!editingUser ? (
+                <label className="wide-field">Temporary password<input type="password" minLength={12} value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required /><span className="field-help">Minimum 12 characters. Share securely.</span></label>
+              ) : null}
+            </fieldset>
+
+            {editingUser && canManage ? (
+              <section className="password-reset-panel">
+                <div><strong>Reset password</strong><span>Set a new temporary password for this user.</span></div>
+                <div className="password-reset-controls"><input type="password" minLength={12} value={temporaryPassword} onChange={(event) => setTemporaryPassword(event.target.value)} placeholder="Temporary password" /><button className="secondary-button" type="button" onClick={resetPassword} disabled={busy || temporaryPassword.length < 12}>Reset</button></div>
+              </section>
+            ) : null}
+
+            {editingUser ? (
+              <section className="user-audit-panel">
+                <strong>Account audit history</strong>
+                {auditEvents.map((event) => <div className="audit-row" key={event.id}><span>{event.action}</span><span>{event.actor_name || "System"}</span><span>{formatDateForDisplay(event.created_at)}</span></div>)}
+                {!auditEvents.length ? <div className="empty-state">No account changes recorded yet.</div> : null}
+              </section>
+            ) : null}
+
+            <div className="form-actions">
+              <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+              {canManage ? <button className="primary-action" type="submit" disabled={busy}><Save size={18} />{busy ? "Saving..." : "Save User"}</button> : null}
             </div>
           </form>
         </div>

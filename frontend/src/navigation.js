@@ -78,7 +78,8 @@ export const navigationGroups = [
     id: "administration",
     label: "Administration",
     items: [
-      { id: "settings", label: "Settings", path: "/settings", icon: SlidersHorizontal, requiredPermission: "dashboard:view", requiredRole: null, requiredModule: "core", status: "active" }
+      { id: "settings", label: "Settings", path: "/settings", icon: SlidersHorizontal, requiredPermission: "dashboard:view", requiredRole: null, requiredModule: "core", status: "active" },
+      { id: "users-access", label: "Users & Access", path: "/users-access", icon: Users, requiredPermission: "users:view", requiredRole: null, requiredModule: "administration", status: "active" }
     ]
   }
 ];
