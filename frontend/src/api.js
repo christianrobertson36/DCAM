@@ -1,5 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5055";
 
+export function brandingAssetUrl(path, updatedAt) {
+  if (!path) return "";
+  const url = `${API_URL}${path}`;
+  return updatedAt ? `${url}?v=${encodeURIComponent(updatedAt)}` : url;
+}
+
 function getStoredToken() {
   try {
     return window.localStorage.getItem("dcam_token");
@@ -68,6 +74,30 @@ export async function login(email, password) {
 
 export async function getMe() {
   return apiRequest("/auth/me");
+}
+
+export async function getBranding() {
+  return apiRequest("/api/settings/branding");
+}
+
+export async function updateBranding(payload) {
+  return apiRequest("/api/settings/branding", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function uploadBrandingAsset(kind, payload) {
+  return apiRequest(`/api/settings/branding/${kind}`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function removeBrandingAsset(kind) {
+  return apiRequest(`/api/settings/branding/${kind}`, {
+    method: "DELETE"
+  });
 }
 
 export async function getCustomerPortalDashboard(params = {}) {

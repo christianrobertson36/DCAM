@@ -10,7 +10,6 @@ import {
   Download,
   Users,
   LogOut,
-  LockKeyhole,
   Menu,
   Plus,
   RefreshCw,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { getVisibleNavigation } from "./navigation";
 import {
+  brandingAssetUrl,
   createAsset,
   createAdminUser,
   createAssetOption,
@@ -48,6 +48,7 @@ import {
   downloadTechnicianJobFile,
   getAssetSummary,
   getBuildingSummary,
+  getBranding,
   getCertificateSummary,
   getComplianceServiceSummary,
   getContactSummary,
@@ -91,6 +92,7 @@ import {
   listTechnicianJobs,
   listWorkOrders,
   login,
+  removeBrandingAsset,
   updateAsset,
   updateAdminUser,
   updateAssetOption,
@@ -110,6 +112,8 @@ import {
   updateTechnicianJob,
   updateWorkOrder,
   uploadTechnicianJobFile,
+  uploadBrandingAsset,
+  updateBranding,
   resetAdminUserPassword
 } from "./api";
 import "./styles/main.css";
@@ -996,6 +1000,52 @@ function statusClassName(status) {
   return String(status || "").toLowerCase().split(" ").join("-");
 }
 
+const DEFAULT_BRANDING = {
+  product_name: "DCAM",
+  company_name: "Digital Compliance & Asset Management",
+  tagline: "Technical compliance operations, connected.",
+  primary_color: "#2563EB",
+  accent_color: "#38BDF8",
+  sidebar_color: "#07111F",
+  support_email: "",
+  support_phone: "",
+  company_address: "",
+  logo_url: null,
+  favicon_url: null,
+  show_powered_by: true,
+  updated_at: null
+};
+
+function applyBranding(branding) {
+  const value = { ...DEFAULT_BRANDING, ...(branding || {}) };
+  const root = document.documentElement;
+  root.style.setProperty("--brand-primary", value.primary_color);
+  root.style.setProperty("--brand-accent", value.accent_color);
+  root.style.setProperty("--brand-sidebar", value.sidebar_color);
+  document.title = value.product_name;
+
+  let favicon = document.querySelector("link[rel='icon']");
+  if (value.favicon_url) {
+    if (!favicon) {
+      favicon = document.createElement("link");
+      favicon.rel = "icon";
+      document.head.appendChild(favicon);
+    }
+    favicon.href = brandingAssetUrl(value.favicon_url, value.updated_at);
+  } else if (favicon) {
+    favicon.remove();
+  }
+}
+
+function BrandMark({ branding, compact = false }) {
+  const logoUrl = brandingAssetUrl(branding?.logo_url, branding?.updated_at);
+  return (
+    <div className={`brand-mark ${logoUrl ? "has-image" : ""} ${compact ? "compact" : ""}`}>
+      {logoUrl ? <img src={logoUrl} alt={`${branding?.product_name || "DCAM"} logo`} /> : (branding?.product_name || "D").charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 class AppErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -1029,6 +1079,17 @@ function App() {
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [language, setLanguage] = useState(() => safeGetStorageItem("dcam_language") || "en");
+  const [branding, setBranding] = useState(DEFAULT_BRANDING);
+
+  useEffect(() => {
+    getBranding()
+      .then((data) => setBranding({ ...DEFAULT_BRANDING, ...(data.branding || {}) }))
+      .catch(() => setBranding(DEFAULT_BRANDING));
+  }, []);
+
+  useEffect(() => {
+    applyBranding(branding);
+  }, [branding]);
 
   useEffect(() => {
     const token = safeGetStorageItem("dcam_token");
@@ -1077,20 +1138,20 @@ function App() {
   if (checkingSession) {
     return (
       <div className="loading-screen">
-        <div className="brand-mark">D</div>
-        <p>Checking DCAM session...</p>
+        <BrandMark branding={branding} />
+        <p>Checking {branding.product_name} session...</p>
       </div>
     );
   }
 
   if (!user) {
-    return <LoginScreen language={language} onLanguageChange={setLanguage} onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen branding={branding} language={language} onLanguageChange={setLanguage} onLoginSuccess={handleLoginSuccess} />;
   }
 
-  return <AdminShell language={language} onLanguageChange={setLanguage} user={user} onLogout={handleLogout} />;
+  return <AdminShell branding={branding} onBrandingChange={setBranding} language={language} onLanguageChange={setLanguage} user={user} onLogout={handleLogout} />;
 }
 
-function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
+function LoginScreen({ branding, language, onLanguageChange, onLoginSuccess }) {
   const [email, setEmail] = useState("admin@dcam.local");
   const [password, setPassword] = useState("ChangeMe123!");
   const [error, setError] = useState("");
@@ -1114,14 +1175,11 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <div className="login-icon">
-          <LockKeyhole size={30} />
-        </div>
-
-        <p className="eyebrow">v26 Record Edit History</p>
-        <h1>Sign in to DCAM</h1>
+        <BrandMark branding={branding} />
+        <p className="eyebrow">Secure customer & operations access</p>
+        <h1>Sign in to {branding.product_name}</h1>
         <p className="login-intro">
-          Digital Compliance & Asset Management for technical compliance operations.
+          {branding.tagline}
         </p>
 
         <label>
@@ -1154,6 +1212,8 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
           Dev admin: admin@dcam.local / ChangeMe123!
         </div>
 
+        {branding.show_powered_by && branding.product_name !== "DCAM" ? <div className="powered-by">Powered by DCAM</div> : null}
+
         <label>
           Language
           <select value={language} onChange={(event) => onLanguageChange(event.target.value)}>
@@ -1166,7 +1226,7 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
   );
 }
 
-function AdminShell({ language, onLanguageChange, user, onLogout }) {
+function AdminShell({ branding, onBrandingChange, language, onLanguageChange, user, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const visibleNavigation = useMemo(
@@ -1203,10 +1263,10 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">D</div>
+          <BrandMark branding={branding} />
           <div>
-            <div className="brand-title">DCAM</div>
-            <div className="brand-subtitle">Digital Compliance & Asset Management</div>
+            <div className="brand-title">{branding.product_name}</div>
+            <div className="brand-subtitle">{branding.company_name}</div>
           </div>
           <button className="sidebar-close" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>
             <X size={20} />
@@ -1253,7 +1313,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v39 Global Search</p>
+            <p className="eyebrow">v40 Branding & White Label</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1292,6 +1352,8 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
         {activePage === "Asset Settings" ? <AssetSettingsPage /> : null}
         {activePage === "Settings" ? (
           <SettingsPage
+            branding={branding}
+            onBrandingChange={onBrandingChange}
             language={language}
             onLanguageChange={onLanguageChange}
             user={user}
@@ -7692,13 +7754,21 @@ function UsersAccessPage({ currentUser }) {
   );
 }
 
-function SettingsPage({ language, onLanguageChange, user }) {
+function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, user }) {
   const [saved, setSaved] = useState(false);
+  const [brandForm, setBrandForm] = useState({ ...DEFAULT_BRANDING, ...branding });
+  const [brandBusy, setBrandBusy] = useState(false);
+  const [brandError, setBrandError] = useState("");
+  const [brandSaved, setBrandSaved] = useState(false);
   const [sampleStatus, setSampleStatus] = useState(null);
   const [sampleBusy, setSampleBusy] = useState(false);
   const [sampleError, setSampleError] = useState("");
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const canAdminSettings = hasPermission(user, PERMISSIONS.SETTINGS_ADMIN);
+
+  useEffect(() => {
+    setBrandForm({ ...DEFAULT_BRANDING, ...branding });
+  }, [branding]);
 
   async function loadSampleStatus() {
     if (!canAdminSettings) {
@@ -7717,6 +7787,60 @@ function SettingsPage({ language, onLanguageChange, user }) {
     event.preventDefault();
     safeSetStorageItem("dcam_language", language);
     setSaved(true);
+  }
+
+  async function saveBranding(event) {
+    event.preventDefault();
+    setBrandBusy(true);
+    setBrandError("");
+    setBrandSaved(false);
+
+    try {
+      const data = await updateBranding(brandForm);
+      onBrandingChange({ ...DEFAULT_BRANDING, ...data.branding });
+      setBrandSaved(true);
+    } catch (err) {
+      setBrandError(err.message);
+    } finally {
+      setBrandBusy(false);
+    }
+  }
+
+  async function uploadBrandAsset(kind, file) {
+    if (!file) return;
+    setBrandBusy(true);
+    setBrandError("");
+    setBrandSaved(false);
+
+    try {
+      const content = await fileToBase64(file);
+      const data = await uploadBrandingAsset(kind, {
+        content_type: file.type,
+        content_base64: content
+      });
+      onBrandingChange({ ...DEFAULT_BRANDING, ...data.branding });
+      setBrandSaved(true);
+    } catch (err) {
+      setBrandError(err.message);
+    } finally {
+      setBrandBusy(false);
+    }
+  }
+
+  async function removeBrandAsset(kind) {
+    setBrandBusy(true);
+    setBrandError("");
+    setBrandSaved(false);
+
+    try {
+      const data = await removeBrandingAsset(kind);
+      onBrandingChange({ ...DEFAULT_BRANDING, ...data.branding });
+      setBrandSaved(true);
+    } catch (err) {
+      setBrandError(err.message);
+    } finally {
+      setBrandBusy(false);
+    }
   }
 
   async function handleInstallSampleData() {
@@ -7758,10 +7882,94 @@ function SettingsPage({ language, onLanguageChange, user }) {
       <section className="page-intro">
         <div>
           <p className="eyebrow">Application Settings</p>
-          <h2>Language and local display preferences</h2>
-          <p>Choose the language used for menus, pages, buttons and forms.</p>
+          <h2>Branding, language and system tools</h2>
+          <p>Control how your organisation appears across DCAM while preserving secure platform defaults.</p>
         </div>
       </section>
+
+      {canAdminSettings ? (
+        <section className="table-card settings-card branding-settings-card">
+          <div className="settings-tool-header">
+            <div>
+              <p className="eyebrow">White-label foundation</p>
+              <h3>Brand identity</h3>
+              <p>Applied to the login screen, sidebar, browser tab and core interface colours.</p>
+            </div>
+            <span className="status-pill active">Live preview</span>
+          </div>
+
+          <div className="branding-settings-layout">
+            <form className="customer-form branding-form" onSubmit={saveBranding}>
+              <div className="form-grid">
+                <Field label="Product name" value={brandForm.product_name} onChange={(value) => setBrandForm((current) => ({ ...current, product_name: value }))} required />
+                <Field label="Company name" value={brandForm.company_name} onChange={(value) => setBrandForm((current) => ({ ...current, company_name: value }))} required />
+                <label className="wide-field">
+                  Tagline
+                  <input value={brandForm.tagline || ""} onChange={(event) => setBrandForm((current) => ({ ...current, tagline: event.target.value }))} maxLength={240} />
+                </label>
+                <label className="brand-colour-field">
+                  Primary colour
+                  <span><input type="color" value={brandForm.primary_color} onChange={(event) => setBrandForm((current) => ({ ...current, primary_color: event.target.value.toUpperCase() }))} /><code>{brandForm.primary_color}</code></span>
+                </label>
+                <label className="brand-colour-field">
+                  Accent colour
+                  <span><input type="color" value={brandForm.accent_color} onChange={(event) => setBrandForm((current) => ({ ...current, accent_color: event.target.value.toUpperCase() }))} /><code>{brandForm.accent_color}</code></span>
+                </label>
+                <label className="brand-colour-field">
+                  Sidebar colour
+                  <span><input type="color" value={brandForm.sidebar_color} onChange={(event) => setBrandForm((current) => ({ ...current, sidebar_color: event.target.value.toUpperCase() }))} /><code>{brandForm.sidebar_color}</code></span>
+                </label>
+                <Field label="Support email" value={brandForm.support_email} onChange={(value) => setBrandForm((current) => ({ ...current, support_email: value }))} />
+                <Field label="Support phone" value={brandForm.support_phone} onChange={(value) => setBrandForm((current) => ({ ...current, support_phone: value }))} />
+                <label className="wide-field">
+                  Company address
+                  <textarea rows={3} value={brandForm.company_address || ""} onChange={(event) => setBrandForm((current) => ({ ...current, company_address: event.target.value }))} />
+                </label>
+                <label className="toggle-row wide-field">
+                  <input type="checkbox" checked={brandForm.show_powered_by !== false} onChange={(event) => setBrandForm((current) => ({ ...current, show_powered_by: event.target.checked }))} />
+                  Show “Powered by DCAM” on white-labelled login screens
+                </label>
+              </div>
+
+              {brandError ? <div className="form-error">{brandError}</div> : null}
+              {brandSaved ? <div className="settings-success">Branding saved and applied.</div> : null}
+
+              <div className="form-actions">
+                <button className="secondary-button" type="button" onClick={() => setBrandForm({ ...DEFAULT_BRANDING, logo_url: branding.logo_url, favicon_url: branding.favicon_url, updated_at: branding.updated_at })} disabled={brandBusy}>Use default colours</button>
+                <button className="primary-action" type="submit" disabled={brandBusy}><Save size={18} />{brandBusy ? "Saving..." : "Save Branding"}</button>
+              </div>
+            </form>
+
+            <aside className="branding-preview" style={{ background: brandForm.sidebar_color }}>
+              <div className="branding-preview-brand">
+                <BrandMark branding={{ ...brandForm, logo_url: branding.logo_url, updated_at: branding.updated_at }} />
+                <div><strong>{brandForm.product_name || "DCAM"}</strong><span>{brandForm.company_name}</span></div>
+              </div>
+              <div className="branding-preview-window">
+                <span style={{ background: brandForm.accent_color }} />
+                <strong style={{ color: brandForm.primary_color }}>Technical compliance, connected.</strong>
+                <small>{brandForm.tagline}</small>
+                <button type="button" style={{ background: brandForm.primary_color }}>Primary action</button>
+              </div>
+            </aside>
+          </div>
+
+          <div className="brand-assets-grid">
+            <div className="brand-asset-card">
+              <div><strong>Main logo</strong><span>PNG or WebP · maximum 2 MB</span></div>
+              {branding.logo_url ? <img src={brandingAssetUrl(branding.logo_url, branding.updated_at)} alt="Current logo" /> : <BrandMark branding={branding} />}
+              <label className="secondary-button">Upload logo<input type="file" accept="image/png,image/webp" disabled={brandBusy} onChange={(event) => uploadBrandAsset("logo", event.target.files?.[0])} /></label>
+              {branding.logo_url ? <button className="danger-link" type="button" onClick={() => removeBrandAsset("logo")} disabled={brandBusy}>Remove</button> : null}
+            </div>
+            <div className="brand-asset-card">
+              <div><strong>Browser favicon</strong><span>Square PNG or WebP · maximum 2 MB</span></div>
+              {branding.favicon_url ? <img className="favicon-preview" src={brandingAssetUrl(branding.favicon_url, branding.updated_at)} alt="Current favicon" /> : <BrandMark branding={branding} compact />}
+              <label className="secondary-button">Upload favicon<input type="file" accept="image/png,image/webp" disabled={brandBusy} onChange={(event) => uploadBrandAsset("favicon", event.target.files?.[0])} /></label>
+              {branding.favicon_url ? <button className="danger-link" type="button" onClick={() => removeBrandAsset("favicon")} disabled={brandBusy}>Remove</button> : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="table-card settings-card">
         <form className="customer-form settings-form" onSubmit={saveSettings}>

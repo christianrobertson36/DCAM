@@ -1,4 +1,7 @@
 ﻿:root {
+  --brand-primary: #2563eb;
+  --brand-accent: #38bdf8;
+  --brand-sidebar: #07111f;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #14213d;
   background: #eef3f8;
@@ -51,7 +54,7 @@ button {
   inset: 0 auto 0 0;
   width: 286px;
   height: 100vh;
-  background: #07111f;
+  background: var(--brand-sidebar);
   color: #ffffff;
   padding: 24px 18px;
   display: flex;
@@ -74,12 +77,31 @@ button {
   width: 46px;
   height: 46px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  background: linear-gradient(135deg, var(--brand-accent), var(--brand-primary));
   display: grid;
   place-items: center;
   font-weight: 900;
   font-size: 24px;
-  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--brand-primary) 35%, transparent);
+}
+
+.brand-mark.has-image {
+  overflow: hidden;
+  padding: 5px;
+  background: #ffffff;
+}
+
+.brand-mark.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand-mark.compact {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  font-size: 17px;
 }
 
 .brand-title {
@@ -138,8 +160,8 @@ button {
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.24));
-  box-shadow: inset 3px 0 0 #38bdf8;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-accent) 20%, transparent), color-mix(in srgb, var(--brand-primary) 24%, transparent));
+  box-shadow: inset 3px 0 0 var(--brand-accent);
 }
 
 .sidebar-footer {
@@ -556,7 +578,7 @@ button {
   gap: 6px;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--brand-primary);
   font-weight: 800;
   cursor: pointer;
 }
@@ -995,7 +1017,7 @@ h1 {
 
 .primary-button {
   width: 100%;
-  background: linear-gradient(135deg, #2563eb, #0f172a);
+  background: linear-gradient(135deg, var(--brand-primary), #0f172a);
   color: #ffffff;
   padding: 14px 16px;
   border-radius: 16px;
@@ -1131,7 +1153,7 @@ h1 {
 }
 
 .primary-action {
-  background: linear-gradient(135deg, #2563eb, #0f172a);
+  background: linear-gradient(135deg, var(--brand-primary), #0f172a);
   color: #ffffff;
   padding: 13px 16px;
   border-radius: 16px;
@@ -1702,6 +1724,187 @@ h1 {
   margin-bottom: 0;
 }
 
+.branding-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 22px;
+}
+
+.branding-form {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.brand-colour-field > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 47px;
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.brand-colour-field input[type="color"] {
+  width: 42px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.brand-colour-field code {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.branding-preview {
+  overflow: hidden;
+  min-height: 310px;
+  padding: 20px;
+  border-radius: 22px;
+  color: #ffffff;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+}
+
+.branding-preview-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.branding-preview-brand strong,
+.branding-preview-brand span {
+  display: block;
+}
+
+.branding-preview-brand span {
+  max-width: 210px;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+}
+
+.branding-preview-window {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #334155;
+}
+
+.branding-preview-window > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+}
+
+.branding-preview-window strong {
+  font-size: 18px;
+}
+
+.branding-preview-window small {
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.branding-preview-window button {
+  width: max-content;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 10px;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.brand-assets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.brand-asset-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.brand-asset-card > div:first-child {
+  grid-column: 1 / -1;
+}
+
+.brand-asset-card strong,
+.brand-asset-card span {
+  display: block;
+}
+
+.brand-asset-card span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.brand-asset-card > img {
+  width: 84px;
+  height: 56px;
+  object-fit: contain;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.brand-asset-card > img.favicon-preview {
+  width: 44px;
+  height: 44px;
+}
+
+.brand-asset-card label.secondary-button {
+  width: max-content;
+  cursor: pointer;
+}
+
+.brand-asset-card input[type="file"] {
+  display: none;
+}
+
+.danger-link {
+  width: max-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #b91c1c;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.powered-by {
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .settings-summary-grid {
   display: grid;
   gap: 12px;
@@ -1965,6 +2168,13 @@ h1 {
   .role-grid,
   .password-reset-controls,
   .audit-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .branding-settings-layout,
+  .brand-assets-grid {
     grid-template-columns: 1fr;
   }
 }
