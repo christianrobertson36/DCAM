@@ -1253,17 +1253,13 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v38 Operational Alerts</p>
+            <p className="eyebrow">v39 Global Search</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
 
           <div className="topbar-actions">
-            <label className="global-search">
-              <Search size={17} />
-              <input aria-label="Global search" placeholder="Search DCAM" disabled />
-              <span>Coming soon</span>
-            </label>
+            <GlobalSearch user={user} onNavigate={selectPage} />
             <AlertsCentre user={user} onNavigate={selectPage} />
             <div className="user-panel">
             <div>
@@ -1306,6 +1302,208 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
       </main>
     </div>
   );
+}
+
+function GlobalSearch({ user, onNavigate }) {
+  const [query, setQuery] = useState("");
+  const [groups, setGroups] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const flatResults = groups.flatMap((group) => group.results);
+
+  useEffect(() => {
+    const search = query.trim();
+
+    if (search.length < 2) {
+      setGroups([]);
+      setLoading(false);
+      setError("");
+      setActiveIndex(-1);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const nextGroups = await searchPermittedModules(user, search);
+        setGroups(nextGroups);
+        setOpen(true);
+        setActiveIndex(nextGroups.some((group) => group.results.length) ? 0 : -1);
+      } catch (err) {
+        setGroups([]);
+        setError(err.message || "Search could not be completed.");
+        setOpen(true);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [query, user.id]);
+
+  function chooseResult(result) {
+    onNavigate(result.page);
+    setQuery("");
+    setGroups([]);
+    setOpen(false);
+    setActiveIndex(-1);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Escape") {
+      setOpen(false);
+      return;
+    }
+
+    if (!flatResults.length) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((current) => (current + 1) % flatResults.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((current) => (current <= 0 ? flatResults.length - 1 : current - 1));
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      chooseResult(flatResults[activeIndex]);
+    }
+  }
+
+  let resultOffset = 0;
+
+  return (
+    <div className="global-search-wrap">
+      <label className={`global-search ${open ? "active" : ""}`}>
+        <Search size={17} />
+        <input
+          aria-label="Global search"
+          aria-expanded={open}
+          placeholder="Search DCAM"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(Boolean(event.target.value.trim()));
+          }}
+          onFocus={() => query.trim() && setOpen(true)}
+          onKeyDown={handleKeyDown}
+        />
+        {loading ? <RefreshCw size={15} className="spin" /> : query ? (
+          <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); setOpen(false); }}>
+            <X size={15} />
+          </button>
+        ) : <span>⌘ K</span>}
+      </label>
+
+      {open ? (
+        <section className="global-search-panel" aria-label="Search results">
+          <div className="search-panel-heading">
+            <div>
+              <p className="eyebrow">Global search</p>
+              <strong>{query.trim().length < 2 ? "Type at least 2 characters" : `Results for “${query.trim()}”`}</strong>
+            </div>
+            <button type="button" aria-label="Close search" onClick={() => setOpen(false)}><X size={17} /></button>
+          </div>
+
+          {error ? <div className="alerts-error">{error}</div> : null}
+
+          <div className="search-results-list">
+            {query.trim().length >= 2 && !loading && !error && !flatResults.length ? (
+              <div className="alerts-empty">
+                <Search size={24} />
+                <strong>No matching records</strong>
+                <span>No results were found in the modules available to your role.</span>
+              </div>
+            ) : null}
+
+            {groups.map((group) => {
+              const groupOffset = resultOffset;
+              resultOffset += group.results.length;
+
+              return group.results.length ? (
+                <section className="search-result-group" key={group.id}>
+                  <p>{group.label}</p>
+                  {group.results.map((result, index) => {
+                    const absoluteIndex = groupOffset + index;
+                    return (
+                      <button
+                        className={absoluteIndex === activeIndex ? "active" : ""}
+                        type="button"
+                        key={result.id}
+                        onMouseEnter={() => setActiveIndex(absoluteIndex)}
+                        onClick={() => chooseResult(result)}
+                      >
+                        <span>
+                          <strong>{result.title}</strong>
+                          <small>{result.meta}</small>
+                        </span>
+                        <span className="search-result-status">{result.status || "Open"}</span>
+                      </button>
+                    );
+                  })}
+                </section>
+              ) : null;
+            })}
+          </div>
+
+          <div className="search-panel-footer">
+            <span>↑↓ Navigate</span><span>Enter Open</span><span>Esc Close</span>
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+async function searchPermittedModules(user, query) {
+  if (user.role === "Customer" && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
+    const portal = await getCustomerPortalDashboard();
+    return buildPortalSearchGroups(portal, query);
+  }
+
+  const sources = [
+    ["customers", "Customers", "Customers", PERMISSIONS.CUSTOMERS_VIEW, () => listCustomers({ search: query }), "customers", (item) => ({ title: item.company_name, meta: [item.trading_name, item.city, item.email].filter(Boolean).join(" · "), status: item.status })],
+    ["contacts", "Contacts", "Contacts", PERMISSIONS.CONTACTS_VIEW, () => listContacts({ search: query }), "contacts", (item) => ({ title: `${item.first_name || ""} ${item.last_name || ""}`.trim(), meta: [item.contact_reference, item.customer_name, item.email].filter(Boolean).join(" · "), status: item.status })],
+    ["buildings", "Buildings / Sites", "Buildings", PERMISSIONS.BUILDINGS_VIEW, () => listBuildings({ search: query }), "buildings", (item) => ({ title: item.name, meta: [item.customer_name, item.city, item.postcode].filter(Boolean).join(" · "), status: item.status })],
+    ["assets", "Assets", "Assets", PERMISSIONS.ASSETS_VIEW, () => listAssets({ search: query }), "assets", (item) => ({ title: item.asset_name, meta: [item.asset_reference, item.asset_tag, item.building_name].filter(Boolean).join(" · "), status: item.status })],
+    ["work-orders", "Work Orders", "Work Orders", PERMISSIONS.WORK_ORDERS_VIEW, () => listWorkOrders({ search: query }), "work_orders", (item) => ({ title: item.title, meta: [item.work_order_reference, item.customer_name, item.building_name].filter(Boolean).join(" · "), status: item.status })],
+    ["reports", "Reports", "Reports", PERMISSIONS.REPORTS_VIEW, () => listReports({ search: query }), "reports", (item) => ({ title: item.report_title, meta: [item.report_reference, item.report_type, item.customer_name].filter(Boolean).join(" · "), status: item.status })],
+    ["certificates", "Certificates", "Certificates", PERMISSIONS.CERTIFICATES_VIEW, () => listCertificates({ search: query }), "certificates", (item) => ({ title: item.certificate_title, meta: [item.certificate_reference, item.certificate_type, item.customer_name].filter(Boolean).join(" · "), status: item.status })],
+    ["people", "People", "People", PERMISSIONS.STAFF_VIEW, () => listStaffProfiles({ search: query }), "staff_profiles", (item) => ({ title: item.user_name, meta: [item.job_title, item.role, item.email].filter(Boolean).join(" · "), status: item.availability_status })]
+  ].filter(([, , , permission]) => hasPermission(user, permission));
+
+  const settled = await Promise.allSettled(sources.map(([, , , , request]) => request()));
+
+  return settled.map((result, index) => {
+    const [id, label, page, , , responseKey, mapResult] = sources[index];
+    const records = result.status === "fulfilled" ? result.value[responseKey] || [] : [];
+    return {
+      id,
+      label,
+      results: records.slice(0, 5).map((item) => ({ id: `${id}-${item.id}`, page, ...mapResult(item) }))
+    };
+  });
+}
+
+function buildPortalSearchGroups(portal, query) {
+  const needle = query.toLowerCase();
+  const matches = (values) => values.filter(Boolean).join(" ").toLowerCase().includes(needle);
+  const groups = [
+    { id: "portal-buildings", label: "Buildings / Sites", page: "Customer Portal", records: portal.buildings || [], map: (item) => ({ title: item.name, meta: [item.city, item.postcode].filter(Boolean).join(" · "), status: item.status }), values: (item) => [item.name, item.city, item.postcode] },
+    { id: "portal-assets", label: "Assets", page: "Customer Portal", records: portal.assets || [], map: (item) => ({ title: item.asset_name, meta: [item.asset_reference, item.building_name].filter(Boolean).join(" · "), status: item.status }), values: (item) => [item.asset_name, item.asset_reference, item.asset_tag, item.building_name] },
+    { id: "portal-work", label: "Work Orders", page: "Customer Portal", records: portal.work_orders || [], map: (item) => ({ title: item.title, meta: [item.work_order_reference, item.building_name].filter(Boolean).join(" · "), status: item.status }), values: (item) => [item.title, item.work_order_reference, item.building_name] },
+    { id: "portal-reports", label: "Reports", page: "Customer Portal", records: portal.reports || [], map: (item) => ({ title: item.report_title, meta: [item.report_reference, item.report_type].filter(Boolean).join(" · "), status: item.status }), values: (item) => [item.report_title, item.report_reference, item.report_type] },
+    { id: "portal-certificates", label: "Certificates", page: "Customer Portal", records: portal.certificates || [], map: (item) => ({ title: item.certificate_title, meta: [item.certificate_reference, item.certificate_type].filter(Boolean).join(" · "), status: item.status }), values: (item) => [item.certificate_title, item.certificate_reference, item.certificate_type] }
+  ];
+
+  return groups.map((group) => ({
+    id: group.id,
+    label: group.label,
+    results: group.records.filter((item) => matches(group.values(item))).slice(0, 5).map((item) => ({ id: `${group.id}-${item.id}`, page: group.page, ...group.map(item) }))
+  }));
 }
 
 function AlertsCentre({ user, onNavigate }) {
