@@ -6,10 +6,12 @@ import {
   Building2,
   CalendarDays,
   ClipboardCheck,
+  Bell,
   Download,
   Users,
   LogOut,
   LockKeyhole,
+  Menu,
   Plus,
   Search,
   Save,
@@ -17,6 +19,7 @@ import {
   Trash2,
   X
 } from "lucide-react";
+import { getVisibleNavigation } from "./navigation";
 import {
   createAsset,
   createAssetOption,
@@ -718,27 +721,6 @@ const PERMISSIONS = {
   SETTINGS_ADMIN: "settings:admin"
 };
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
-  { label: "Customers", icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
-  { label: "Contacts", icon: Users, permission: PERMISSIONS.CONTACTS_VIEW },
-  { label: "Pipeline", icon: SlidersHorizontal, permission: PERMISSIONS.PIPELINE_VIEW },
-  { label: "Buildings", icon: Building2, permission: PERMISSIONS.BUILDINGS_VIEW },
-  { label: "Assets", icon: Building2, permission: PERMISSIONS.ASSETS_VIEW },
-  { label: "Work Orders", icon: Save, permission: PERMISSIONS.WORK_ORDERS_VIEW },
-  { label: "Schedule", icon: CalendarDays, permission: PERMISSIONS.SCHEDULE_VIEW },
-  { label: "Maintenance Plans", icon: CalendarDays, permission: PERMISSIONS.MAINTENANCE_PLANS_VIEW },
-  { label: "Compliance Services", icon: ClipboardCheck, permission: PERMISSIONS.COMPLIANCE_SERVICES_VIEW },
-  { label: "Forms Builder", icon: ClipboardCheck, permission: PERMISSIONS.FORM_TEMPLATES_VIEW },
-  { label: "Reports", icon: Download, permission: PERMISSIONS.REPORTS_VIEW },
-  { label: "Certificates", icon: Download, permission: PERMISSIONS.CERTIFICATES_VIEW },
-  { label: "Customer Portal", icon: LayoutDashboard, permission: PERMISSIONS.CUSTOMER_PORTAL_VIEW },
-  { label: "My Jobs", icon: ClipboardCheck, permission: PERMISSIONS.TECHNICIAN_JOBS_VIEW },
-  { label: "People", icon: Users, permission: PERMISSIONS.STAFF_VIEW },
-  { label: "Asset Settings", icon: SlidersHorizontal, permission: PERMISSIONS.ASSETS_ADMIN },
-  { label: "Settings", icon: SlidersHorizontal, permission: PERMISSIONS.DASHBOARD_VIEW }
-];
-
 const emptyCustomer = {
   company_name: "",
   trading_name: "",
@@ -1176,9 +1158,14 @@ function LoginScreen({ language, onLanguageChange, onLoginSuccess }) {
 
 function AdminShell({ language, onLanguageChange, user, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
-  const visibleNavItems = useMemo(
-    () => navItems.filter((item) => hasPermission(user, item.permission)),
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const visibleNavigation = useMemo(
+    () => getVisibleNavigation(user, hasPermission),
     [user]
+  );
+  const visibleNavItems = useMemo(
+    () => visibleNavigation.flatMap((group) => group.items),
+    [visibleNavigation]
   );
 
   useEffect(() => {
@@ -1191,44 +1178,86 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
     ? activePage
     : "DCAM Operating System";
 
+  function selectPage(label) {
+    setActivePage(label);
+    setSidebarOpen(false);
+  }
+
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <button
+        className={`sidebar-backdrop ${sidebarOpen ? "visible" : ""}`}
+        aria-label="Close navigation"
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">D</div>
           <div>
             <div className="brand-title">DCAM</div>
             <div className="brand-subtitle">Digital Compliance & Asset Management</div>
           </div>
+          <button className="sidebar-close" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
 
-        <nav className="nav-list">
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = item.label === activePage;
+        <nav className="nav-list" aria-label="Main navigation">
+          {visibleNavigation.map((group) => (
+            <section className="nav-group" key={group.id}>
+              <p className="nav-group-label">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = item.label === activePage;
 
-            return (
-              <button
-                className={`nav-item ${active ? "active" : ""}`}
-                key={item.label}
-                onClick={() => setActivePage(item.label)}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+                return (
+                  <button
+                    className={`nav-item ${active ? "active" : ""}`}
+                    key={item.id}
+                    onClick={() => selectPage(item.label)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </section>
+          ))}
         </nav>
+
+        <div className="sidebar-footer">
+          <span className="sidebar-status-dot" />
+          <div>
+            <strong>DCAM Cloud</strong>
+            <span>Operational</span>
+          </div>
+        </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">v34 Pipeline</p>
+          <div className="topbar-heading">
+            <button className="menu-button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}>
+              <Menu size={21} />
+            </button>
+            <div>
+            <p className="eyebrow">v35 Navigation</p>
             <h1>{pageTitle}</h1>
+            </div>
           </div>
 
-          <div className="user-panel">
+          <div className="topbar-actions">
+            <label className="global-search">
+              <Search size={17} />
+              <input aria-label="Global search" placeholder="Search DCAM" disabled />
+              <span>Coming soon</span>
+            </label>
+            <button className="topbar-icon-button" aria-label="Notifications coming soon" disabled>
+              <Bell size={18} />
+            </button>
+            <div className="user-panel">
             <div>
               <strong>{user.name}</strong>
               <span>{user.role}</span>
@@ -1237,6 +1266,7 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
               <LogOut size={16} />
               Logout
             </button>
+            </div>
           </div>
         </header>
 
