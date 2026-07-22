@@ -1313,7 +1313,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v40 Branding & White Label</p>
+            <p className="eyebrow">v41 Branded Documents</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -6319,7 +6319,7 @@ function ReportsPage({ user }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${report.report_reference}.json`;
+      link.download = `${report.report_reference}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -6705,7 +6705,7 @@ function CertificatesPage({ user }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${certificate.certificate_reference}.json`;
+      link.download = `${certificate.certificate_reference}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();

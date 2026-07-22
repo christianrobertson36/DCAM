@@ -4,6 +4,7 @@ const { PERMISSIONS, hasPermission } = require("../config/permissions");
 const { getPool } = require("../db/pool");
 const { authRequired, requirePermission } = require("../middleware/authRequired");
 const { writeAuditEvent } = require("../utils/audit");
+const { createCertificatePdf } = require("../utils/brandedPdf");
 
 const router = express.Router();
 
@@ -233,6 +234,8 @@ router.get("/:id/export", requirePermission(PERMISSIONS.CERTIFICATES_EXPORT), as
       return res.status(404).json({ ok: false, error: "Certificate not found" });
     }
 
+    const format = req.query.format === "json" ? "json" : "pdf";
+
     await writeAuditEvent(pool, {
       actorUserId: req.user.id,
       action: "certificate.exported",
@@ -240,17 +243,22 @@ router.get("/:id/export", requirePermission(PERMISSIONS.CERTIFICATES_EXPORT), as
       entityId: id,
       metadata: {
         certificate_reference: certificate.certificate_reference,
-        status: certificate.status
+        status: certificate.status,
+        format
       }
     });
 
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Content-Disposition", `attachment; filename="${certificate.certificate_reference}.json"`);
+    if (format === "json") {
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${certificate.certificate_reference}.json"`);
+      return res.send(JSON.stringify({ exported_at: new Date().toISOString(), certificate: publicCertificate(certificate) }, null, 2));
+    }
 
-    return res.send(JSON.stringify({
-      exported_at: new Date().toISOString(),
-      certificate: publicCertificate(certificate)
-    }, null, 2));
+    const pdf = await createCertificatePdf(pool, certificate);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", pdf.length);
+    res.setHeader("Content-Disposition", `attachment; filename="${certificate.certificate_reference}.pdf"`);
+    return res.send(pdf);
   } catch (err) {
     return next(err);
   }

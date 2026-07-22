@@ -4,6 +4,7 @@ const { PERMISSIONS, hasPermission } = require("../config/permissions");
 const { getPool } = require("../db/pool");
 const { authRequired, requirePermission } = require("../middleware/authRequired");
 const { writeAuditEvent } = require("../utils/audit");
+const { createReportPdf } = require("../utils/brandedPdf");
 
 const router = express.Router();
 
@@ -240,6 +241,8 @@ router.get("/:id/export", requirePermission(PERMISSIONS.REPORTS_EXPORT), async (
       return res.status(404).json({ ok: false, error: "Report not found" });
     }
 
+    const format = req.query.format === "json" ? "json" : "pdf";
+
     await writeAuditEvent(pool, {
       actorUserId: req.user.id,
       action: "report.exported",
@@ -248,17 +251,22 @@ router.get("/:id/export", requirePermission(PERMISSIONS.REPORTS_EXPORT), async (
       metadata: {
         report_reference: report.report_reference,
         report_title: report.report_title,
-        status: report.status
+        status: report.status,
+        format
       }
     });
 
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Content-Disposition", `attachment; filename="${report.report_reference}.json"`);
+    if (format === "json") {
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${report.report_reference}.json"`);
+      return res.send(JSON.stringify({ exported_at: new Date().toISOString(), report: publicReport(report) }, null, 2));
+    }
 
-    return res.send(JSON.stringify({
-      exported_at: new Date().toISOString(),
-      report: publicReport(report)
-    }, null, 2));
+    const pdf = await createReportPdf(pool, report);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", pdf.length);
+    res.setHeader("Content-Disposition", `attachment; filename="${report.report_reference}.pdf"`);
+    return res.send(pdf);
   } catch (err) {
     return next(err);
   }
