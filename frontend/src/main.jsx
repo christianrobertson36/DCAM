@@ -13,6 +13,7 @@ import {
   LockKeyhole,
   Menu,
   Plus,
+  RefreshCw,
   Search,
   Save,
   SlidersHorizontal,
@@ -1303,68 +1304,215 @@ function AdminShell({ language, onLanguageChange, user, onLogout }) {
           />
         ) : null}
         {activePage === "Users & Access" ? <UsersAccessPage currentUser={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
       </main>
     </div>
   );
 }
 
-function DashboardPage() {
-  const cards = [
-    {
-      title: "Compliance Status",
-      value: "Buildings Ready",
-      text: "Customers and buildings/sites are now connected."
-    },
-    {
-      title: "Open Work Orders",
-      value: "0",
-      text: "Work order tracking starts after assets."
-    },
-    {
-      title: "Assets Registered",
-      value: "0",
-      text: "Asset register and QR codes are planned next."
-    },
-    {
-      title: "Renewals Due",
-      value: "0",
-      text: "Renewal automation will be added after core records."
+function DashboardPage({ user }) {
+  const [dashboard, setDashboard] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshedAt, setRefreshedAt] = useState(null);
+
+  async function loadDashboard() {
+    setLoading(true);
+    setError("");
+
+    const requests = [
+      ["customers", PERMISSIONS.CUSTOMERS_VIEW, getCustomerSummary],
+      ["pipeline", PERMISSIONS.PIPELINE_VIEW, getPipelineSummary],
+      ["buildings", PERMISSIONS.BUILDINGS_VIEW, getBuildingSummary],
+      ["assets", PERMISSIONS.ASSETS_VIEW, getAssetSummary],
+      ["workOrders", PERMISSIONS.WORK_ORDERS_VIEW, getWorkOrderSummary],
+      ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
+      ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
+      ["reports", PERMISSIONS.REPORTS_VIEW, getReportSummary],
+      ["certificates", PERMISSIONS.CERTIFICATES_VIEW, getCertificateSummary]
+    ].filter(([, permission]) => hasPermission(user, permission));
+
+    try {
+      if (!requests.length && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
+        const portal = await getCustomerPortalDashboard();
+        setDashboard({ portal: portal.summary || {} });
+      } else {
+        const results = await Promise.allSettled(requests.map(([, , request]) => request()));
+        const nextDashboard = {};
+        const failedModules = [];
+
+        results.forEach((result, index) => {
+          const key = requests[index][0];
+
+          if (result.status === "fulfilled") {
+            nextDashboard[key] = result.value.summary || {};
+          } else {
+            failedModules.push(key);
+          }
+        });
+
+        setDashboard(nextDashboard);
+
+        if (failedModules.length) {
+          setError(`Some dashboard data could not be loaded: ${failedModules.join(", ")}.`);
+        }
+      }
+
+      setRefreshedAt(new Date());
+    } catch (err) {
+      setError(err.message || "Dashboard data could not be loaded.");
+    } finally {
+      setLoading(false);
     }
-  ];
+  }
+
+  useEffect(() => {
+    loadDashboard();
+  }, [user.id]);
+
+  const cards = buildDashboardCards(dashboard);
+  const sections = buildDashboardSections(dashboard);
 
   return (
-    <>
-      <section className="hero">
+    <div className="dashboard-page">
+      <section className="dashboard-hero">
         <div>
-          <p className="eyebrow">Technical Compliance Platform</p>
-          <h2>Customers now have buildings/sites ready for assets, QR codes, jobs and compliance history.</h2>
+          <p className="eyebrow">Live Operations Dashboard</p>
+          <h2>Your permitted operational picture, in one place.</h2>
           <p>
-            DCAM now tracks both customer companies and the physical buildings or sites where compliance work happens.
+            Live totals are drawn from the DCAM modules available to your role. Restricted modules and records are not requested.
           </p>
+        </div>
+
+        <div className="dashboard-refresh-panel">
+          <span className="live-status"><i /> Live data</span>
+          <button className="secondary-button" type="button" onClick={loadDashboard} disabled={loading}>
+            <RefreshCw size={17} className={loading ? "spin" : ""} />
+            {loading ? "Refreshing" : "Refresh"}
+          </button>
+          <small>{refreshedAt ? `Updated ${refreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Loading dashboard"}</small>
         </div>
       </section>
 
+      {error ? <div className="dashboard-warning">{error}</div> : null}
+
       <section className="card-grid">
         {cards.map((card) => (
-          <article className="card" key={card.title}>
+          <article className={`card dashboard-card ${card.tone || ""}`} key={card.title}>
             <p>{card.title}</p>
-            <strong>{card.value}</strong>
+            <strong>{loading ? "—" : card.value}</strong>
             <span>{card.text}</span>
           </article>
         ))}
       </section>
 
-      <section className="module-grid">
-        <Module title="CRM" text="Companies, contacts, pipeline, quotes, contracts and renewals." />
-        <Module title="Buildings / Sites" text="Customer buildings, access notes, site contacts and compliance notes." />
-        <Module title="Asset Management" text="QR-coded assets with locations, photos, history and certificates." />
-        <Module title="CMMS" text="Preventive maintenance, reactive jobs, scheduling and work orders." />
-        <Module title="Technician App" text="Daily jobs, QR scanning, checklists, photos, signatures and offline sync." />
-        <Module title="Automation & AI" text="Renewal reminders, report writing, quotation support and intelligent search." />
-      </section>
-    </>
+      {sections.length ? (
+        <section className="dashboard-section-grid">
+          {sections.map((section) => (
+            <article className="dashboard-section" key={section.title}>
+              <div className="dashboard-section-heading">
+                <div>
+                  <p className="eyebrow">{section.eyebrow}</p>
+                  <h3>{section.title}</h3>
+                </div>
+                <strong>{section.total}</strong>
+              </div>
+              <div className="dashboard-stat-list">
+                {section.stats.map((stat) => (
+                  <div key={stat.label}>
+                    <span>{stat.label}</span>
+                    <strong className={stat.tone || ""}>{stat.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : !loading ? (
+        <section className="table-card">
+          <div className="empty-state">
+            <strong>No dashboard modules are available for this account.</strong>
+            <span>Ask a DCAM administrator to review this user&apos;s role and permissions.</span>
+          </div>
+        </section>
+      ) : null}
+    </div>
   );
+}
+
+function buildDashboardCards(data) {
+  if (data.portal) {
+    return [
+      { title: "Buildings", value: data.portal.buildings || 0, text: "Sites available to your customer account." },
+      { title: "Assets", value: data.portal.assets || 0, text: "Assets within your permitted sites." },
+      { title: "Open Work", value: data.portal.open_work_orders || 0, text: "Current work orders requiring attention.", tone: data.portal.open_work_orders ? "attention" : "" },
+      { title: "Documents", value: (data.portal.reports || 0) + (data.portal.certificates || 0), text: "Reports and certificates available to you." }
+    ];
+  }
+
+  const openWork = data.workOrders ? (data.workOrders.open || 0) + (data.workOrders.in_progress || 0) + (data.workOrders.on_hold || 0) : null;
+  const deadlines = (data.maintenance?.overdue || 0) + (data.maintenance?.due_soon || 0) + (data.certificates?.expired || 0) + (data.certificates?.expiring_soon || 0);
+  const cards = [];
+
+  if (data.workOrders) cards.push({ title: "Open Work Orders", value: openWork, text: `${data.workOrders.overdue || 0} overdue across current operations.`, tone: data.workOrders.overdue ? "attention" : "" });
+  if (data.assets) cards.push({ title: "Assets Registered", value: data.assets.total || 0, text: `${data.assets.service_due || 0} service due · ${data.assets.out_of_service || 0} out of service.` });
+  if (data.compliance) cards.push({ title: "Compliance Services", value: data.compliance.total || 0, text: `${data.compliance.failed || 0} failed · ${data.compliance.defects || 0} defects.`, tone: data.compliance.failed || data.compliance.defects ? "attention" : "" });
+  if (data.maintenance || data.certificates) cards.push({ title: "Upcoming Deadlines", value: deadlines, text: "Maintenance and certificate items due or overdue.", tone: deadlines ? "attention" : "" });
+  if (cards.length < 4 && data.buildings) cards.push({ title: "Buildings / Sites", value: data.buildings.total || 0, text: `${data.buildings.survey_required || 0} require a survey.` });
+  if (cards.length < 4 && data.customers) cards.push({ title: "Active Customers", value: data.customers.active || 0, text: `${data.customers.total || 0} customer records in total.` });
+  if (cards.length < 4 && data.pipeline) cards.push({ title: "Open Pipeline", value: data.pipeline.open || 0, text: `${formatDashboardMoney(data.pipeline.open_value)} open opportunity value.` });
+
+  return cards.slice(0, 4);
+}
+
+function buildDashboardSections(data) {
+  const sections = [];
+
+  if (data.portal) {
+    sections.push({ eyebrow: "Customer access", title: "Your compliance estate", total: data.portal.customers || 0, stats: [
+      { label: "Reports", value: data.portal.reports || 0 },
+      { label: "Certificates", value: data.portal.certificates || 0 },
+      { label: "Open work", value: data.portal.open_work_orders || 0, tone: data.portal.open_work_orders ? "warning" : "" }
+    ] });
+    return sections;
+  }
+
+  if (data.workOrders) sections.push({ eyebrow: "Operations", title: "Work orders", total: data.workOrders.total || 0, stats: [
+    { label: "Open", value: data.workOrders.open || 0 },
+    { label: "In progress", value: data.workOrders.in_progress || 0 },
+    { label: "Overdue", value: data.workOrders.overdue || 0, tone: data.workOrders.overdue ? "danger" : "" }
+  ] });
+  if (data.compliance) sections.push({ eyebrow: "Compliance", title: "Service outcomes", total: data.compliance.total || 0, stats: [
+    { label: "Passed", value: data.compliance.passed || 0, tone: "success" },
+    { label: "Failed", value: data.compliance.failed || 0, tone: data.compliance.failed ? "danger" : "" },
+    { label: "Defects", value: data.compliance.defects || 0, tone: data.compliance.defects ? "warning" : "" }
+  ] });
+  if (data.maintenance) sections.push({ eyebrow: "Maintenance", title: "Planned maintenance", total: data.maintenance.total || 0, stats: [
+    { label: "Active", value: data.maintenance.active || 0 },
+    { label: "Due soon", value: data.maintenance.due_soon || 0, tone: data.maintenance.due_soon ? "warning" : "" },
+    { label: "Overdue", value: data.maintenance.overdue || 0, tone: data.maintenance.overdue ? "danger" : "" }
+  ] });
+  if (data.certificates || data.reports) sections.push({ eyebrow: "Documents", title: "Reports & certificates", total: (data.reports?.total || 0) + (data.certificates?.total || 0), stats: [
+    { label: "Reports issued", value: data.reports?.issued || 0 },
+    { label: "Certificates issued", value: data.certificates?.issued || 0, tone: "success" },
+    { label: "Expiring soon", value: data.certificates?.expiring_soon || 0, tone: data.certificates?.expiring_soon ? "warning" : "" }
+  ] });
+  if (data.customers || data.buildings || data.pipeline) sections.push({ eyebrow: "Commercial", title: "Customers & estate", total: data.customers?.total || 0, stats: [
+    { label: "Active customers", value: data.customers?.active || 0 },
+    { label: "Buildings", value: data.buildings?.total || 0 },
+    { label: "Open opportunities", value: data.pipeline?.open || 0 }
+  ] });
+  if (data.assets) sections.push({ eyebrow: "Asset register", title: "Asset condition", total: data.assets.total || 0, stats: [
+    { label: "Active", value: data.assets.active || 0, tone: "success" },
+    { label: "Service due", value: data.assets.service_due || 0, tone: data.assets.service_due ? "warning" : "" },
+    { label: "Out of service", value: data.assets.out_of_service || 0, tone: data.assets.out_of_service ? "danger" : "" }
+  ] });
+
+  return sections;
+}
+
+function formatDashboardMoney(value) {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
 function CustomerPortalPage({ user }) {
