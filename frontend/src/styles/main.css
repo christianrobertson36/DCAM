@@ -1117,6 +1117,107 @@ h1 {
   }
 }
 
+/* Quotations and contracts */
+.commercial-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 16px;
+}
+
+.commercial-row {
+  grid-template-columns: minmax(190px, 1.3fr) minmax(170px, 1fr) minmax(170px, 1fr) auto;
+}
+
+.commercial-row > div,
+.contract-row > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.commercial-row > div:last-child {
+  align-items: center;
+  grid-auto-flow: column;
+}
+
+.contract-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.commercial-form {
+  width: min(980px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.quotation-lines {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.quotation-line {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 100px 130px 110px auto;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+.quotation-line input {
+  min-width: 0;
+}
+
+.quotation-total {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 16px;
+  justify-content: end;
+  margin-top: 14px;
+  text-align: right;
+}
+
+.quotation-detail-lines {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.quotation-detail-lines > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+@media (max-width: 980px) {
+  .commercial-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .commercial-row,
+  .quotation-line {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-form {
+    width: calc(100vw - 16px);
+  }
+}
+
 /* Customer 360 */
 .customer-360-modal {
   width: min(1180px, calc(100vw - 32px));

@@ -35,6 +35,7 @@ export const navigationGroups = [
       { id: "customers", label: "Customers", path: "/customers", icon: Users, requiredPermission: "customers:view", requiredRole: null, requiredModule: "crm", status: "active" },
       { id: "contacts", label: "Contacts", path: "/contacts", icon: Users, requiredPermission: "contacts:view", requiredRole: null, requiredModule: "crm", status: "active" },
       { id: "pipeline", label: "Pipeline", path: "/pipeline", icon: SlidersHorizontal, requiredPermission: "pipeline:view", requiredRole: null, requiredModule: "crm", status: "active" },
+      { id: "commercial", label: "Quotes & Contracts", path: "/commercial", icon: Save, requiredPermission: "pipeline:view", requiredRole: null, requiredModule: "crm", status: "active" },
       { id: "buildings", label: "Buildings", path: "/buildings", icon: Building2, requiredPermission: "buildings:view", requiredRole: null, requiredModule: "crm", status: "active" }
     ]
   },

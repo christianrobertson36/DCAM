@@ -35,6 +35,7 @@ import {
   createFormTemplate,
   createMaintenancePlan,
   createPipelineOpportunity,
+  createQuotation,
   createReport,
   createServiceRequest,
   createTechnicianJobSignature,
@@ -66,6 +67,8 @@ import {
   getMaintenancePlanSummary,
   getMe,
   getPipelineSummary,
+  getCommercialSummary,
+  getQuotation,
   getReportSummary,
   getServiceRequestSummary,
   getSampleDataStatus,
@@ -77,6 +80,8 @@ import {
   listRecordHistory,
   listMaintenancePlans,
   listPipelineOpportunities,
+  listQuotations,
+  listContracts,
   listAssetFiles,
   listAssetHistory,
   listAssetOptions,
@@ -128,6 +133,8 @@ import {
   updateDefect,
   updateMaintenancePlan,
   updatePipelineOpportunity,
+  updateQuotationStatus,
+  convertQuotationToContract,
   updateTechnicianJobChecklistItem,
   updateScheduleAssignment,
   updateStaffProfile,
@@ -405,7 +412,6 @@ const TRANSLATIONS = {
     "Priority": "Prioritate",
     "Due date": "Data scadenta",
     "Customer": "Client",
-    "Building": "Cladire",
     "Asset": "Activ",
     "Assigned user ID": "ID utilizator alocat",
     "Description": "Descriere",
@@ -725,6 +731,39 @@ const TRANSLATIONS = {
     "Insurance": "Asigurare",
     "Site Information": "Informatii locatie",
     "Commercial": "Comercial",
+    "v45 Quotes & Contracts": "v45 Oferte si contracte",
+    "Quotes & Contracts": "Oferte si contracte",
+    "Commercial Management": "Management comercial",
+    "Quotations and contracts": "Oferte si contracte",
+    "Turn customer opportunities into priced quotations and accepted work into renewable contracts.": "Transformati oportunitatile clientilor in oferte evaluate si lucrarile acceptate in contracte reinnoibile.",
+    "New Quotation": "Oferta noua",
+    "Quotations": "Oferte",
+    "Open Quotations": "Oferte deschise",
+    "Quoted Value": "Valoare ofertata",
+    "Active Contracts": "Contracte active",
+    "Contract Value": "Valoare contracte",
+    "Contracts": "Contracte",
+    "All sites": "Toate locatiile",
+    "No expiry": "Fara expirare",
+    "Renewal": "Reinnoire",
+    "No renewal date": "Fara data de reinnoire",
+    "No quotations created.": "Nu exista oferte create.",
+    "No contracts created.": "Nu exista contracte create.",
+    "Price customer work": "Stabiliti pretul lucrarilor clientului",
+    "Building": "Cladire",
+    "Opportunity": "Oportunitate",
+    "No opportunity": "Fara oportunitate",
+    "Quotation title": "Titlu oferta",
+    "Valid until": "Valabila pana la",
+    "Tax rate %": "Cota taxa %",
+    "Quotation Items": "Articole oferta",
+    "Add Line": "Adauga linie",
+    "Subtotal": "Subtotal",
+    "Total with tax": "Total cu taxe",
+    "Save Quotation": "Salveaza oferta",
+    "Sent": "Trimisa",
+    "Accepted": "Acceptata",
+    "Create Contract": "Creeaza contract",
     "Defects & Corrective Actions": "Defecte si actiuni corective",
     "v43 Defects & Corrective Actions": "v43 Defecte si actiuni corective",
     "Control risk through verified remediation": "Controlati riscul prin remediere verificata",
@@ -939,6 +978,19 @@ const emptyOpportunity = {
   source: "",
   next_action: "",
   notes: ""
+};
+
+const emptyQuotation = {
+  customer_id: "",
+  building_id: "",
+  opportunity_id: "",
+  title: "",
+  status: "Draft",
+  currency: "RON",
+  valid_until: "",
+  tax_rate: 19,
+  notes: "",
+  items: [{ description: "", quantity: 1, unit_price: 0 }]
 };
 
 const emptyBuilding = {
@@ -1433,7 +1485,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Defects" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
+  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Quotes & Contracts" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Defects" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
     ? activePage
     : "DCAM Operating System";
 
@@ -1502,7 +1554,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v44 Customer 360</p>
+            <p className="eyebrow">v45 Quotes & Contracts</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1526,6 +1578,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
         {activePage === "Customers" ? <CustomersPage user={user} language={language} /> : null}
         {activePage === "Contacts" ? <ContactsPage user={user} /> : null}
         {activePage === "Pipeline" ? <PipelinePage user={user} /> : null}
+        {activePage === "Quotes & Contracts" ? <CommercialPage user={user} language={language} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
@@ -1551,7 +1604,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
           />
         ) : null}
         {activePage === "Users & Access" ? <UsersAccessPage currentUser={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Defects" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Quotes & Contracts" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Defects" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
       </main>
     </div>
   );
@@ -3531,6 +3584,225 @@ function PipelinePage({ user }) {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CommercialPage({ user, language }) {
+  const tr = (value) => translateText(value, language);
+  const [summary, setSummary] = useState({});
+  const [quotations, setQuotations] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
+  const [form, setForm] = useState(emptyQuotation);
+  const [formOpen, setFormOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canCreate = hasPermission(user, PERMISSIONS.PIPELINE_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.PIPELINE_EDIT);
+
+  async function loadCommercial() {
+    const [summaryData, quotationData, contractData, customerData, buildingData, pipelineData] = await Promise.all([
+      getCommercialSummary(),
+      listQuotations(),
+      listContracts(),
+      listCustomers(),
+      listBuildings(),
+      listPipelineOpportunities()
+    ]);
+    setSummary(summaryData.summary || {});
+    setQuotations(quotationData.quotations || []);
+    setContracts(contractData.contracts || []);
+    setCustomers(customerData.customers || []);
+    setBuildings(buildingData.buildings || []);
+    setOpportunities(pipelineData.opportunities || []);
+  }
+
+  useEffect(() => {
+    loadCommercial().catch((err) => setError(err.message));
+  }, []);
+
+  function openCreate() {
+    setForm({
+      ...emptyQuotation,
+      customer_id: customers[0]?.id || "",
+      valid_until: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+      items: [{ description: "", quantity: 1, unit_price: 0 }]
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  function updateItem(index, field, value) {
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item)
+    }));
+  }
+
+  async function saveQuotation(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await createQuotation({
+        ...form,
+        customer_id: Number(form.customer_id),
+        building_id: form.building_id ? Number(form.building_id) : null,
+        opportunity_id: form.opportunity_id ? Number(form.opportunity_id) : null,
+        tax_rate: Number(form.tax_rate || 0),
+        items: form.items.map((item) => ({
+          ...item,
+          quantity: Number(item.quantity || 0),
+          unit_price: Number(item.unit_price || 0)
+        }))
+      });
+      setFormOpen(false);
+      await loadCommercial();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function viewQuotation(quotation) {
+    setError("");
+    try {
+      const response = await getQuotation(quotation.id);
+      setDetail(response.quotation);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function changeStatus(status) {
+    setBusy(true);
+    try {
+      await updateQuotationStatus(detail.id, status);
+      setDetail({ ...detail, status });
+      await loadCommercial();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createContract() {
+    const start = new Date();
+    const end = new Date(start);
+    end.setFullYear(end.getFullYear() + 1);
+    setBusy(true);
+    try {
+      await convertQuotationToContract(detail.id, {
+        start_date: start.toISOString().slice(0, 10),
+        end_date: end.toISOString().slice(0, 10),
+        renewal_date: end.toISOString().slice(0, 10),
+        notes: detail.notes
+      });
+      setDetail(null);
+      await loadCommercial();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const customerBuildings = buildings.filter((building) => String(building.customer_id) === String(form.customer_id));
+  const customerOpportunities = opportunities.filter((opportunity) => String(opportunity.customer_id) === String(form.customer_id));
+  const subtotal = form.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0);
+
+  return (
+    <div className="commercial-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Commercial Management</p>
+          <h2>Quotations and contracts</h2>
+          <p>Turn customer opportunities into priced quotations and accepted work into renewable contracts.</p>
+        </div>
+        {canCreate ? <button className="primary-action" onClick={openCreate} disabled={!customers.length}><Plus size={18} />New Quotation</button> : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {[
+          ["Quotations", summary.quotations],
+          ["Open Quotations", summary.open_quotations],
+          ["Quoted Value", Number(summary.quoted_value || 0).toLocaleString()],
+          ["Active Contracts", summary.active_contracts],
+          ["Contract Value", Number(summary.contract_value || 0).toLocaleString()]
+        ].map(([label, value]) => <article className="mini-card" key={label}><span>{label}</span><strong>{value || 0}</strong></article>)}
+      </section>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <div className="commercial-grid">
+        <section className="table-card">
+          <div className="table-header"><strong>Quotations</strong><span>{quotations.length}</span></div>
+          <div className="customer-list">
+            {quotations.map((quotation) => (
+              <div className="customer-row commercial-row" key={quotation.id}>
+                <div><strong>{quotation.title}</strong><span>{quotation.quotation_reference}</span></div>
+                <div><span>{quotation.customer_name}</span><span>{quotation.building_name || "All sites"}</span></div>
+                <div><strong>{quotation.currency} {Number(quotation.total || 0).toLocaleString()}</strong><span>{quotation.valid_until ? `${tr("Valid until")} ${formatDateForDisplay(quotation.valid_until)}` : tr("No expiry")}</span></div>
+                <div><span className={`status-badge ${statusClassName(quotation.status)}`}>{tr(quotation.status)}</span><button className="secondary-button" onClick={() => viewQuotation(quotation)}>{tr("View")}</button></div>
+              </div>
+            ))}
+            {!quotations.length ? <div className="empty-state">No quotations created.</div> : null}
+          </div>
+        </section>
+
+        <section className="table-card">
+          <div className="table-header"><strong>Contracts</strong><span>{contracts.length}</span></div>
+          <div className="customer-list">
+            {contracts.map((contract) => (
+              <div className="contract-row" key={contract.id}>
+                <div><strong>{contract.title}</strong><span>{contract.contract_reference}</span></div>
+                <div><span>{contract.customer_name}</span><span>{contract.currency} {Number(contract.value || 0).toLocaleString()}</span></div>
+                <div><span className={`status-badge ${statusClassName(contract.status)}`}>{tr(contract.status)}</span><span>{contract.renewal_date ? `${tr("Renewal")} ${formatDateForDisplay(contract.renewal_date)}` : tr("No renewal date")}</span></div>
+              </div>
+            ))}
+            {!contracts.length ? <div className="empty-state">No contracts created.</div> : null}
+          </div>
+        </section>
+      </div>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form commercial-form" onSubmit={saveQuotation}>
+            <div className="form-header"><div><p className="eyebrow">New Quotation</p><h2>Price customer work</h2></div><button className="icon-button" type="button" onClick={() => setFormOpen(false)}><X size={18} /></button></div>
+            <div className="form-grid">
+              <label>Customer<select value={form.customer_id} onChange={(event) => setForm((current) => ({ ...current, customer_id: event.target.value, building_id: "", opportunity_id: "" }))} required><option value="">Select customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.company_name}</option>)}</select></label>
+              <label>Building<select value={form.building_id} onChange={(event) => setForm((current) => ({ ...current, building_id: event.target.value }))}><option value="">{tr("All sites")}</option>{customerBuildings.map((building) => <option value={building.id} key={building.id}>{building.name}</option>)}</select></label>
+              <label>Opportunity<select value={form.opportunity_id} onChange={(event) => setForm((current) => ({ ...current, opportunity_id: event.target.value }))}><option value="">{tr("No opportunity")}</option>{customerOpportunities.map((opportunity) => <option value={opportunity.id} key={opportunity.id}>{opportunity.opportunity_name}</option>)}</select></label>
+              <Field label="Quotation title" value={form.title} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
+              <Field label="Valid until" value={form.valid_until} onChange={(value) => setForm((current) => ({ ...current, valid_until: value }))} type="date" />
+              <Field label="Tax rate %" value={form.tax_rate} onChange={(value) => setForm((current) => ({ ...current, tax_rate: value }))} type="number" />
+            </div>
+            <section className="quotation-lines">
+              <div className="table-header"><strong>Quotation Items</strong><button className="secondary-button" type="button" onClick={() => setForm((current) => ({ ...current, items: [...current.items, { description: "", quantity: 1, unit_price: 0 }] }))}><Plus size={16} />Add Line</button></div>
+              {form.items.map((item, index) => <div className="quotation-line" key={index}><input value={item.description} onChange={(event) => updateItem(index, "description", event.target.value)} placeholder={tr("Description")} required /><input value={item.quantity} onChange={(event) => updateItem(index, "quantity", event.target.value)} type="number" min="0" step="0.01" /><input value={item.unit_price} onChange={(event) => updateItem(index, "unit_price", event.target.value)} type="number" min="0" step="0.01" /><strong>{(Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}</strong>{form.items.length > 1 ? <button className="icon-button" type="button" onClick={() => setForm((current) => ({ ...current, items: current.items.filter((_, itemIndex) => itemIndex !== index) }))}><Trash2 size={16} /></button> : null}</div>)}
+              <div className="quotation-total"><span>{tr("Subtotal")}</span><strong>{form.currency} {subtotal.toFixed(2)}</strong><span>{tr("Total with tax")}</span><strong>{form.currency} {(subtotal * (1 + Number(form.tax_rate || 0) / 100)).toFixed(2)}</strong></div>
+            </section>
+            <label className="wide-field">Notes<textarea value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} rows={3} /></label>
+            <div className="form-actions"><button className="secondary-button" type="button" onClick={() => setFormOpen(false)}>Cancel</button><button className="primary-action" disabled={busy}><Save size={18} />{busy ? "Saving..." : "Save Quotation"}</button></div>
+          </form>
+        </div>
+      ) : null}
+
+      {detail ? (
+        <div className="modal-backdrop">
+          <section className="customer-form commercial-form">
+            <div className="form-header"><div><p className="eyebrow">{detail.quotation_reference}</p><h2>{detail.title}</h2><p>{detail.customer_name} · {detail.currency} {Number(detail.total || 0).toLocaleString()}</p></div><button className="icon-button" onClick={() => setDetail(null)}><X size={18} /></button></div>
+            <div className="quotation-detail-lines">{detail.items.map((item) => <div key={item.id}><span>{item.description} · {item.quantity} × {item.unit_price}</span><strong>{detail.currency} {Number(item.line_total).toFixed(2)}</strong></div>)}</div>
+            {canEdit ? <div className="form-actions"><select value={detail.status} onChange={(event) => changeStatus(event.target.value)} disabled={busy}>{["Draft", "Sent", "Accepted", "Rejected", "Expired"].map((status) => <option value={status} key={status}>{tr(status)}</option>)}</select>{detail.status === "Accepted" ? <button className="primary-action" onClick={createContract} disabled={busy}>{tr("Create Contract")}</button> : null}<button className="secondary-button" onClick={() => setDetail(null)}>Close</button></div> : null}
+          </section>
         </div>
       ) : null}
     </div>

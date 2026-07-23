@@ -235,6 +235,43 @@ export async function updatePipelineOpportunity(id, payload) {
   });
 }
 
+export async function getCommercialSummary() {
+  return apiRequest("/api/commercial/summary");
+}
+
+export async function listQuotations() {
+  return apiRequest("/api/commercial/quotations");
+}
+
+export async function getQuotation(id) {
+  return apiRequest(`/api/commercial/quotations/${id}`);
+}
+
+export async function createQuotation(payload) {
+  return apiRequest("/api/commercial/quotations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateQuotationStatus(id, status) {
+  return apiRequest(`/api/commercial/quotations/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status })
+  });
+}
+
+export async function convertQuotationToContract(id, payload) {
+  return apiRequest(`/api/commercial/quotations/${id}/contract`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listContracts() {
+  return apiRequest("/api/commercial/contracts");
+}
+
 export async function getBuildingSummary() {
   return apiRequest("/api/buildings/summary");
 }
