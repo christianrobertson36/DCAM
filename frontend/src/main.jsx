@@ -30,6 +30,7 @@ import {
   createComplianceService,
   createContact,
   createCustomer,
+  createDefect,
   createFormTemplate,
   createMaintenancePlan,
   createPipelineOpportunity,
@@ -44,6 +45,7 @@ import {
   deleteAssetFile,
   deleteSampleData,
   downloadAssetFile,
+  downloadDefectFile,
   exportReport,
   exportCertificate,
   downloadTechnicianJobFile,
@@ -56,6 +58,7 @@ import {
   getContactSummary,
   getCustomerPortalDashboard,
   getCustomerSummary,
+  getDefectSummary,
   getFormTemplateSummary,
   getMaintenancePlanSummary,
   getMe,
@@ -83,6 +86,8 @@ import {
   listComplianceServices,
   listContacts,
   listCustomers,
+  listDefectFiles,
+  listDefects,
   listFormTemplates,
   listScheduleAssignments,
   listReports,
@@ -100,6 +105,8 @@ import {
   login,
   addServiceRequestUpdate,
   closeServiceRequest,
+  closeDefect,
+  createDefectWorkOrder,
   convertServiceRequest,
   removeBrandingAsset,
   updateAsset,
@@ -114,6 +121,7 @@ import {
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
+  updateDefect,
   updateMaintenancePlan,
   updatePipelineOpportunity,
   updateTechnicianJobChecklistItem,
@@ -123,9 +131,11 @@ import {
   updateWorkOrder,
   uploadTechnicianJobFile,
   uploadServiceRequestFile,
+  uploadDefectFile,
   uploadBrandingAsset,
   updateBranding,
-  resetAdminUserPassword
+  resetAdminUserPassword,
+  verifyDefect
 } from "./api";
 import "./styles/main.css";
 
@@ -638,7 +648,92 @@ const TRANSLATIONS = {
     "events": "evenimente",
     "Loading history...": "Se incarca istoricul...",
     "No update history has been recorded yet.": "Nu exista istoric de actualizari inca.",
-    "System": "Sistem"
+    "System": "Sistem",
+    "Service Desk": "Birou de servicii",
+    "Normal": "Normal",
+    "Rejected": "Respins",
+    "Maintenance": "Mentenanta",
+    "Defect": "Defect",
+    "Quote": "Oferta",
+    "Other": "Altele",
+    "Service Requests": "Solicitari de service",
+    "Customer Requests & Service Desk": "Solicitari clienti si birou de servicii",
+    "One queue from request to work order": "O singura coada de la solicitare la comanda de lucru",
+    "Capture requests, keep customers informed, monitor SLA dates and convert approved work cleanly.": "Inregistrati solicitarile, informati clientii, monitorizati termenele SLA si convertiti lucrarile aprobate.",
+    "New Request": "Solicitare noua",
+    "New": "Nou",
+    "Under Review": "In analiza",
+    "Converted": "Convertit",
+    "SLA Overdue": "SLA depasit",
+    "No service requests match the current filters.": "Nicio solicitare de service nu corespunde filtrelor curente.",
+    "New Service Request": "Solicitare de service noua",
+    "Create a service request": "Creati o solicitare de service",
+    "Select customer": "Selectati clientul",
+    "No building": "Fara cladire",
+    "No asset": "Fara activ",
+    "Requester name": "Nume solicitant",
+    "Requester email": "Email solicitant",
+    "Requester phone": "Telefon solicitant",
+    "Assigned to": "Alocat catre",
+    "Unassigned": "Nealocat",
+    "SLA due": "Termen SLA",
+    "Updates": "Actualizari",
+    "No updates yet.": "Nu exista actualizari.",
+    "Add Update": "Adauga actualizare",
+    "Files & Evidence": "Fisiere si dovezi",
+    "No files uploaded.": "Nu exista fisiere incarcate.",
+    "Upload PNG, JPG, WebP or PDF": "Incarca PNG, JPG, WebP sau PDF",
+    "Convert to Work Order": "Converteste in comanda de lucru",
+    "Close Request": "Inchide solicitarea",
+    "Save Request": "Salveaza solicitarea",
+    "Customer Visible": "Vizibil clientului",
+    "Internal": "Intern",
+    "Defects & Corrective Actions": "Defecte si actiuni corective",
+    "v43 Defects & Corrective Actions": "v43 Defecte si actiuni corective",
+    "Control risk through verified remediation": "Controlati riscul prin remediere verificata",
+    "Record findings, assign responsibility, create corrective work and retain evidence through closure.": "Inregistrati constatarile, alocati responsabilitatea, creati lucrari corective si pastrati dovezile pana la inchidere.",
+    "Add Defect": "Adauga defect",
+    "Awaiting Verification": "Asteapta verificarea",
+    "Critical": "Critic",
+    "All severities": "Toate severitatile",
+    "Low": "Scazut",
+    "Medium": "Mediu",
+    "High": "Ridicat",
+    "Verified": "Verificat",
+    "Defect Register": "Registru defecte",
+    "No building selected": "Nicio cladire selectata",
+    "risk": "risc",
+    "Target": "Termen",
+    "No target date": "Fara termen",
+    "View": "Vizualizeaza",
+    "No defects match the current filters.": "Niciun defect nu corespunde filtrelor curente.",
+    "New Defect": "Defect nou",
+    "Add defect": "Adauga defect",
+    "Compliance Service": "Serviciu de conformitate",
+    "No linked service": "Fara serviciu asociat",
+    "General": "General",
+    "Fire Safety": "Siguranta la incendiu",
+    "Mechanical": "Mecanic",
+    "Building Fabric": "Structura cladirii",
+    "Compliance": "Conformitate",
+    "Severity": "Severitate",
+    "Identified date": "Data identificarii",
+    "Target date": "Data tinta",
+    "Corrective action": "Actiune corectiva",
+    "Verification notes": "Note de verificare",
+    "Describe the evidence checked and the verified outcome...": "Descrieti dovezile verificate si rezultatul confirmat...",
+    "Corrective Evidence": "Dovezi de remediere",
+    "Identification": "Identificare",
+    "Remediation": "Remediere",
+    "Verification": "Verificare",
+    "Upload Evidence": "Incarca dovezi",
+    "Create Work Order": "Creeaza comanda de lucru",
+    "Verify Remediation": "Verifica remedierea",
+    "Close Defect": "Inchide defectul",
+    "Save Defect": "Salveaza defectul",
+    "Create a corrective work order for this defect?": "Creati o comanda de lucru corectiva pentru acest defect?",
+    "Verification notes are required.": "Notele de verificare sunt obligatorii.",
+    "Close this verified defect?": "Inchideti acest defect verificat?"
   }
 };
 
@@ -742,6 +837,12 @@ const PERMISSIONS = {
   SERVICE_REQUESTS_ASSIGN: "service_requests:assign",
   SERVICE_REQUESTS_CONVERT: "service_requests:convert",
   SERVICE_REQUESTS_CLOSE: "service_requests:close",
+  DEFECTS_VIEW: "defects:view",
+  DEFECTS_CREATE: "defects:create",
+  DEFECTS_EDIT: "defects:edit",
+  DEFECTS_ASSIGN: "defects:assign",
+  DEFECTS_VERIFY: "defects:verify",
+  DEFECTS_CLOSE: "defects:close",
   CUSTOMER_PORTAL_VIEW: "customer_portal:view",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
@@ -889,6 +990,24 @@ const emptyServiceRequest = {
   status: "New",
   assigned_user_id: "",
   sla_due_at: ""
+};
+
+const emptyDefect = {
+  title: "",
+  description: "",
+  category: "General",
+  severity: "Medium",
+  risk_rating: "Medium",
+  status: "Open",
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  compliance_service_id: "",
+  assigned_user_id: "",
+  identified_date: new Date().toISOString().slice(0, 10),
+  target_date: "",
+  corrective_action: "",
+  verification_notes: ""
 };
 
 const emptyScheduleAssignment = {
@@ -1277,7 +1396,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
+  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Defects" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
     ? activePage
     : "DCAM Operating System";
 
@@ -1346,7 +1465,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v42 Service Desk</p>
+            <p className="eyebrow">v43 Defects & Corrective Actions</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1373,7 +1492,8 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
-        {activePage === "Service Desk" ? <ServiceRequestsPage user={user} /> : null}
+        {activePage === "Service Desk" ? <ServiceRequestsPage user={user} language={language} /> : null}
+        {activePage === "Defects" ? <DefectsPage user={user} language={language} /> : null}
         {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
         {activePage === "Maintenance Plans" ? <MaintenancePlansPage user={user} /> : null}
         {activePage === "Compliance Services" ? <ComplianceServicesPage user={user} /> : null}
@@ -1394,7 +1514,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
           />
         ) : null}
         {activePage === "Users & Access" ? <UsersAccessPage currentUser={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Defects" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
       </main>
     </div>
   );
@@ -1556,11 +1676,14 @@ function GlobalSearch({ user, onNavigate }) {
 
 async function searchPermittedModules(user, query) {
   if (user.role === "Customer" && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
-    const [portal, serviceRequests] = await Promise.all([
+    const [portal, serviceRequests, defects] = await Promise.all([
       getCustomerPortalDashboard(),
       hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_VIEW)
         ? listServiceRequests({ search: query })
-        : Promise.resolve({ service_requests: [] })
+        : Promise.resolve({ service_requests: [] }),
+      hasPermission(user, PERMISSIONS.DEFECTS_VIEW)
+        ? listDefects({ search: query })
+        : Promise.resolve({ defects: [] })
     ]);
     return [
       ...buildPortalSearchGroups(portal, query),
@@ -1574,6 +1697,17 @@ async function searchPermittedModules(user, query) {
           meta: [item.request_reference, item.building_name].filter(Boolean).join(" · "),
           status: item.status
         }))
+      },
+      {
+        id: "portal-defects",
+        label: "Defects",
+        results: (defects.defects || []).slice(0, 5).map((item) => ({
+          id: `portal-defect-${item.id}`,
+          page: "Defects",
+          title: item.title,
+          meta: [item.defect_reference, item.building_name].filter(Boolean).join(" · "),
+          status: item.status
+        }))
       }
     ];
   }
@@ -1585,6 +1719,7 @@ async function searchPermittedModules(user, query) {
     ["assets", "Assets", "Assets", PERMISSIONS.ASSETS_VIEW, () => listAssets({ search: query }), "assets", (item) => ({ title: item.asset_name, meta: [item.asset_reference, item.asset_tag, item.building_name].filter(Boolean).join(" · "), status: item.status })],
     ["work-orders", "Work Orders", "Work Orders", PERMISSIONS.WORK_ORDERS_VIEW, () => listWorkOrders({ search: query }), "work_orders", (item) => ({ title: item.title, meta: [item.work_order_reference, item.customer_name, item.building_name].filter(Boolean).join(" · "), status: item.status })],
     ["service-requests", "Service Requests", "Service Desk", PERMISSIONS.SERVICE_REQUESTS_VIEW, () => listServiceRequests({ search: query }), "service_requests", (item) => ({ title: item.title, meta: [item.request_reference, item.customer_name, item.building_name].filter(Boolean).join(" · "), status: item.status })],
+    ["defects", "Defects", "Defects", PERMISSIONS.DEFECTS_VIEW, () => listDefects({ search: query }), "defects", (item) => ({ title: item.title, meta: [item.defect_reference, item.customer_name, item.building_name].filter(Boolean).join(" · "), status: item.status })],
     ["reports", "Reports", "Reports", PERMISSIONS.REPORTS_VIEW, () => listReports({ search: query }), "reports", (item) => ({ title: item.report_title, meta: [item.report_reference, item.report_type, item.customer_name].filter(Boolean).join(" · "), status: item.status })],
     ["certificates", "Certificates", "Certificates", PERMISSIONS.CERTIFICATES_VIEW, () => listCertificates({ search: query }), "certificates", (item) => ({ title: item.certificate_title, meta: [item.certificate_reference, item.certificate_type, item.customer_name].filter(Boolean).join(" · "), status: item.status })],
     ["people", "People", "People", PERMISSIONS.STAFF_VIEW, () => listStaffProfiles({ search: query }), "staff_profiles", (item) => ({ title: item.user_name, meta: [item.job_title, item.role, item.email].filter(Boolean).join(" · "), status: item.availability_status })]
@@ -1636,6 +1771,7 @@ function AlertsCentre({ user, onNavigate }) {
       ["assets", PERMISSIONS.ASSETS_VIEW, getAssetSummary],
       ["workOrders", PERMISSIONS.WORK_ORDERS_VIEW, getWorkOrderSummary],
       ["serviceRequests", PERMISSIONS.SERVICE_REQUESTS_VIEW, getServiceRequestSummary],
+      ["defects", PERMISSIONS.DEFECTS_VIEW, getDefectSummary],
       ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
       ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
       ["certificates", PERMISSIONS.CERTIFICATES_VIEW, getCertificateSummary],
@@ -1745,6 +1881,7 @@ function buildOperationalAlerts(data) {
   };
   const workOrders = summary("workOrders");
   const serviceRequests = summary("serviceRequests");
+  const defects = summary("defects");
   const maintenance = summary("maintenance");
   const compliance = summary("compliance");
   const certificates = summary("certificates");
@@ -1754,6 +1891,8 @@ function buildOperationalAlerts(data) {
   add(workOrders.overdue, { id: "work-overdue", severity: "danger", title: `${workOrders.overdue} overdue work order${workOrders.overdue === 1 ? "" : "s"}`, text: "Review due dates and assignments.", page: "Work Orders" });
   add(serviceRequests.overdue, { id: "requests-overdue", severity: "danger", title: `${serviceRequests.overdue} service request SLA${serviceRequests.overdue === 1 ? " is" : "s are"} overdue`, text: "Review triage, ownership and customer updates.", page: "Service Desk" });
   add(serviceRequests.new, { id: "requests-new", severity: "warning", title: `${serviceRequests.new} new service request${serviceRequests.new === 1 ? "" : "s"}`, text: "New customer requests are waiting for review.", page: "Service Desk" });
+  add(defects.critical, { id: "defects-critical", severity: "danger", title: `${defects.critical} open critical defect${defects.critical === 1 ? "" : "s"}`, text: "Critical corrective action requires immediate review.", page: "Defects" });
+  add(defects.overdue, { id: "defects-overdue", severity: "danger", title: `${defects.overdue} overdue defect${defects.overdue === 1 ? "" : "s"}`, text: "Corrective action has passed its target date.", page: "Defects" });
   add(maintenance.overdue, { id: "maintenance-overdue", severity: "danger", title: `${maintenance.overdue} maintenance plan${maintenance.overdue === 1 ? " is" : "s are"} overdue`, text: "Planned maintenance requires action.", page: "Maintenance Plans" });
   add(compliance.failed, { id: "compliance-failed", severity: "danger", title: `${compliance.failed} failed compliance service${compliance.failed === 1 ? "" : "s"}`, text: "Review outcomes and corrective action.", page: "Compliance Services" });
   add(certificates.expired, { id: "certificates-expired", severity: "danger", title: `${certificates.expired} expired certificate${certificates.expired === 1 ? "" : "s"}`, text: "Review renewal or replacement status.", page: "Certificates" });
@@ -1784,6 +1923,7 @@ function DashboardPage({ user }) {
       ["assets", PERMISSIONS.ASSETS_VIEW, getAssetSummary],
       ["workOrders", PERMISSIONS.WORK_ORDERS_VIEW, getWorkOrderSummary],
       ["serviceRequests", PERMISSIONS.SERVICE_REQUESTS_VIEW, getServiceRequestSummary],
+      ["defects", PERMISSIONS.DEFECTS_VIEW, getDefectSummary],
       ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
       ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
       ["reports", PERMISSIONS.REPORTS_VIEW, getReportSummary],
@@ -1792,15 +1932,19 @@ function DashboardPage({ user }) {
 
     try {
       if (user.role === "Customer" && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
-        const [portal, serviceRequests] = await Promise.all([
+        const [portal, serviceRequests, defects] = await Promise.all([
           getCustomerPortalDashboard(),
           hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_VIEW)
             ? getServiceRequestSummary()
+            : Promise.resolve({ summary: {} }),
+          hasPermission(user, PERMISSIONS.DEFECTS_VIEW)
+            ? getDefectSummary()
             : Promise.resolve({ summary: {} })
         ]);
         setDashboard({
           portal: portal.summary || {},
-          serviceRequests: serviceRequests.summary || {}
+          serviceRequests: serviceRequests.summary || {},
+          defects: defects.summary || {}
         });
       } else {
         const results = await Promise.allSettled(requests.map(([, , request]) => request()));
@@ -1947,6 +2091,11 @@ function buildDashboardSections(data) {
       { label: "Under review", value: data.serviceRequests.under_review || 0 },
       { label: "SLA overdue", value: data.serviceRequests.overdue || 0, tone: data.serviceRequests.overdue ? "danger" : "" }
     ] });
+    if (data.defects) sections.push({ eyebrow: "Corrective actions", title: "Your defects", total: data.defects.total || 0, stats: [
+      { label: "Open", value: data.defects.open || 0 },
+      { label: "Awaiting verification", value: data.defects.awaiting_verification || 0 },
+      { label: "Overdue", value: data.defects.overdue || 0, tone: data.defects.overdue ? "danger" : "" }
+    ] });
     return sections;
   }
 
@@ -1959,6 +2108,11 @@ function buildDashboardSections(data) {
     { label: "New", value: data.serviceRequests.new || 0 },
     { label: "Under review", value: data.serviceRequests.under_review || 0 },
     { label: "SLA overdue", value: data.serviceRequests.overdue || 0, tone: data.serviceRequests.overdue ? "danger" : "" }
+  ] });
+  if (data.defects) sections.push({ eyebrow: "Corrective actions", title: "Defect register", total: data.defects.total || 0, stats: [
+    { label: "Open", value: data.defects.open || 0 },
+    { label: "Critical", value: data.defects.critical || 0, tone: data.defects.critical ? "danger" : "" },
+    { label: "Overdue", value: data.defects.overdue || 0, tone: data.defects.overdue ? "danger" : "" }
   ] });
   if (data.compliance) sections.push({ eyebrow: "Compliance", title: "Service outcomes", total: data.compliance.total || 0, stats: [
     { label: "Passed", value: data.compliance.passed || 0, tone: "success" },
@@ -4500,7 +4654,348 @@ function PeoplePage({ user }) {
   );
 }
 
-function ServiceRequestsPage({ user }) {
+function DefectsPage({ user, language }) {
+  const [defects, setDefects] = useState([]);
+  const [summary, setSummary] = useState({});
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [services, setServices] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [severity, setSeverity] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyDefect);
+  const [files, setFiles] = useState([]);
+  const [fileStage, setFileStage] = useState("Identification");
+  const [fileVisibility, setFileVisibility] = useState("Customer Visible");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const isCustomer = user.role === "Customer";
+  const canCreate = hasPermission(user, PERMISSIONS.DEFECTS_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.DEFECTS_EDIT);
+  const canAssign = hasPermission(user, PERMISSIONS.DEFECTS_ASSIGN);
+  const canVerify = hasPermission(user, PERMISSIONS.DEFECTS_VERIFY);
+  const canClose = hasPermission(user, PERMISSIONS.DEFECTS_CLOSE);
+  const tr = (value) => translateText(value, language);
+
+  async function loadDefects() {
+    const [summaryData, defectData] = await Promise.all([
+      getDefectSummary(),
+      listDefects({ search, status, severity })
+    ]);
+    setSummary(summaryData.summary || {});
+    setDefects(defectData.defects || []);
+  }
+
+  async function loadReferences() {
+    if (isCustomer) {
+      const portal = await getCustomerPortalDashboard();
+      setCustomers(portal.customers || []);
+      setBuildings(portal.buildings || []);
+      setAssets(portal.assets || []);
+      return;
+    }
+    const [customerData, buildingData, assetData, serviceData, staffData] = await Promise.all([
+      listCustomers(),
+      listBuildings(),
+      listAssets(),
+      hasPermission(user, PERMISSIONS.COMPLIANCE_SERVICES_VIEW) ? listComplianceServices() : Promise.resolve({ services: [] }),
+      hasPermission(user, PERMISSIONS.STAFF_VIEW) ? listStaffUsers() : Promise.resolve({ users: [] })
+    ]);
+    setCustomers(customerData.customers || []);
+    setBuildings(buildingData.buildings || []);
+    setAssets(assetData.assets || []);
+    setServices(serviceData.compliance_services || []);
+    setStaffUsers(staffData.users || []);
+  }
+
+  useEffect(() => {
+    Promise.all([loadDefects(), loadReferences()]).catch((err) => setError(err.message));
+  }, []);
+
+  function updateField(field, value) {
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+      if (field === "customer_id") {
+        next.building_id = "";
+        next.asset_id = "";
+        next.compliance_service_id = "";
+      }
+      if (field === "building_id") next.asset_id = "";
+      return next;
+    });
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setFiles([]);
+    setForm({
+      ...emptyDefect,
+      identified_date: new Date().toISOString().slice(0, 10),
+      customer_id: customers.length === 1 ? String(customers[0].id) : ""
+    });
+    setFormOpen(true);
+    setError("");
+  }
+
+  async function openEdit(defect) {
+    setEditing(defect);
+    setForm({
+      ...emptyDefect,
+      ...defect,
+      customer_id: defect.customer_id || "",
+      building_id: defect.building_id || "",
+      asset_id: defect.asset_id || "",
+      compliance_service_id: defect.compliance_service_id || "",
+      assigned_user_id: defect.assigned_user_id || "",
+      identified_date: formatDateForInput(defect.identified_date),
+      target_date: formatDateForInput(defect.target_date)
+    });
+    setFormOpen(true);
+    setError("");
+    try {
+      const data = await listDefectFiles(defect.id);
+      setFiles(data.files || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditing(null);
+    setForm(emptyDefect);
+    setFiles([]);
+  }
+
+  async function saveDefect(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const payload = {
+        ...form,
+        customer_id: Number(form.customer_id),
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        compliance_service_id: form.compliance_service_id ? Number(form.compliance_service_id) : null,
+        assigned_user_id: form.assigned_user_id ? Number(form.assigned_user_id) : null
+      };
+      if (editing) await updateDefect(editing.id, payload);
+      else await createDefect(payload);
+      closeForm();
+      await loadDefects();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function makeWorkOrder() {
+    if (!window.confirm(tr("Create a corrective work order for this defect?"))) return;
+    setBusy(true);
+    try {
+      await createDefectWorkOrder(editing.id);
+      closeForm();
+      await loadDefects();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyCurrent() {
+    if (!form.verification_notes?.trim()) {
+      setError(tr("Verification notes are required."));
+      return;
+    }
+    setBusy(true);
+    try {
+      await verifyDefect(editing.id, form.verification_notes);
+      closeForm();
+      await loadDefects();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function closeCurrent() {
+    if (!window.confirm(tr("Close this verified defect?"))) return;
+    setBusy(true);
+    try {
+      await closeDefect(editing.id);
+      closeForm();
+      await loadDefects();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !editing) return;
+    setBusy(true);
+    try {
+      await uploadDefectFile(editing.id, {
+        filename: file.name,
+        content_type: file.type,
+        data: await fileToBase64(file),
+        evidence_stage: fileStage,
+        visibility: isCustomer ? "Customer Visible" : fileVisibility
+      });
+      const data = await listDefectFiles(editing.id);
+      setFiles(data.files || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadFile(file) {
+    try {
+      const blob = await downloadDefectFile(editing.id, file.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.original_filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const selectedCustomerId = Number(form.customer_id);
+  const selectedBuildingId = Number(form.building_id);
+  const availableBuildings = buildings.filter((item) => !selectedCustomerId || Number(item.customer_id) === selectedCustomerId);
+  const availableAssets = assets.filter((item) => !selectedBuildingId || Number(item.building_id) === selectedBuildingId);
+  const availableServices = services.filter((item) => !selectedCustomerId || Number(item.customer_id) === selectedCustomerId);
+  const summaryCards = [
+    ["Total", summary.total || 0],
+    ["Open", summary.open || 0],
+    ["In Progress", summary.in_progress || 0],
+    ["Awaiting Verification", summary.awaiting_verification || 0],
+    ["Critical", summary.critical || 0],
+    ["Overdue", summary.overdue || 0]
+  ];
+
+  return (
+    <div className="defects-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Defects & Corrective Actions</p>
+          <h2>Control risk through verified remediation</h2>
+          <p>Record findings, assign responsibility, create corrective work and retain evidence through closure.</p>
+        </div>
+        {canCreate ? <button className="primary-action" type="button" onClick={openCreate}><Plus size={18} />Add Defect</button> : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map(([label, value]) => (
+          <article className={`mini-card ${(label === "Critical" || label === "Overdue") && value ? "attention" : ""}`} key={label}>
+            <span>{label}</span><strong>{value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar defect-filter" onSubmit={(event) => { event.preventDefault(); loadDefects().catch((err) => setError(err.message)); }}>
+        <div className="search-box"><Search size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search defects, references, customers or sites..." /></div>
+        <select value={severity} onChange={(event) => setSeverity(event.target.value)}>
+          <option value="">{tr("All severities")}</option>
+          {["Low", "Medium", "High", "Critical"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
+        </select>
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">{tr("All statuses")}</option>
+          {["Open", "In Progress", "Awaiting Verification", "Verified", "Closed"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
+        </select>
+        <button className="secondary-button" type="submit">{tr("Search")}</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+      <section className="table-card">
+        <div className="table-header"><strong>Defect Register</strong><span>{defects.length} shown</span></div>
+        {defects.length ? (
+          <div className="customer-list">
+            {defects.map((defect) => (
+              <div className={`customer-row defect-row ${defect.overdue ? "sla-overdue" : ""}`} key={defect.id}>
+                <div><strong>{defect.title}</strong><span>{defect.defect_reference} · {defect.category}</span></div>
+                <div><span>{defect.customer_name}</span><span>{defect.building_name || tr("No building selected")}</span></div>
+                <div><span className={`risk-badge ${defect.severity.toLowerCase()}`}>{tr(defect.severity)}</span><span>{tr(defect.risk_rating)} {tr("risk")}</span></div>
+                <div><span className={`status-badge ${statusClassName(defect.status)}`}>{tr(defect.status)}</span><span className={defect.overdue ? "overdue-text" : ""}>{defect.target_date ? `${tr("Target")}: ${formatDateForDisplay(defect.target_date)}` : tr("No target date")}</span></div>
+                <div className="row-actions"><button className="secondary-button" type="button" onClick={() => openEdit(defect)}>{canEdit ? tr("Open") : tr("View")}</button></div>
+              </div>
+            ))}
+          </div>
+        ) : <div className="empty-state">No defects match the current filters.</div>}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form defect-form" onSubmit={saveDefect}>
+            <div className="form-header">
+              <div><p className="eyebrow">{editing?.defect_reference || tr("New Defect")}</p><h2>{editing?.title || tr("Add defect")}</h2></div>
+              <button className="icon-button" type="button" onClick={closeForm}><X size={18} /></button>
+            </div>
+            <div className="form-grid">
+              <label>{tr("Customer")}<select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)} required disabled={isCustomer || !canEdit && editing}><option value="">{tr("Select customer")}</option>{customers.map((item) => <option value={item.id} key={item.id}>{item.company_name}</option>)}</select></label>
+              <label>{tr("Building")}<select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)} disabled={!canEdit && editing}><option value="">{tr("No building")}</option>{availableBuildings.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+              <label>{tr("Asset")}<select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)} disabled={!canEdit && editing}><option value="">{tr("No asset")}</option>{availableAssets.map((item) => <option value={item.id} key={item.id}>{item.asset_reference} · {item.asset_name}</option>)}</select></label>
+              <label>{tr("Compliance Service")}<select value={form.compliance_service_id} onChange={(event) => updateField("compliance_service_id", event.target.value)} disabled={!canEdit && editing}><option value="">{tr("No linked service")}</option>{availableServices.map((item) => <option value={item.id} key={item.id}>{item.service_reference} · {item.service_name}</option>)}</select></label>
+              <Field label={tr("Title")} value={form.title} onChange={(value) => updateField("title", value)} required disabled={!canEdit && editing} />
+              <label>{tr("Category")}<select value={form.category} onChange={(event) => updateField("category", event.target.value)} disabled={!canEdit && editing}>{["General", "Fire Safety", "Electrical", "Mechanical", "Building Fabric", "Compliance"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}</select></label>
+              <label>{tr("Severity")}<select value={form.severity} onChange={(event) => updateField("severity", event.target.value)} disabled={!canEdit && editing}>{["Low", "Medium", "High", "Critical"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}</select></label>
+              <label>{tr("Risk rating")}<select value={form.risk_rating} onChange={(event) => updateField("risk_rating", event.target.value)} disabled={!canEdit && editing}>{["Low", "Medium", "High", "Critical"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}</select></label>
+              {editing && canEdit ? <label>{tr("Status")}<select value={form.status} onChange={(event) => updateField("status", event.target.value)}>{["Open", "In Progress", "Awaiting Verification"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}{["Verified", "Closed"].includes(editing.status) ? <option value={editing.status}>{tr(editing.status)}</option> : null}</select></label> : null}
+              {canAssign ? <label>{tr("Assigned user")}<select value={form.assigned_user_id} onChange={(event) => updateField("assigned_user_id", event.target.value)}><option value="">{tr("Unassigned")}</option>{staffUsers.map((item) => <option value={item.id} key={item.id}>{item.name} · {item.role}</option>)}</select></label> : null}
+              <Field label={tr("Identified date")} value={form.identified_date} onChange={(value) => updateField("identified_date", value)} type="date" disabled={!canEdit && editing} />
+              <Field label={tr("Target date")} value={form.target_date} onChange={(value) => updateField("target_date", value)} type="date" disabled={!canEdit && editing} />
+              <label className="wide-field">{tr("Description")}<textarea value={form.description} onChange={(event) => updateField("description", event.target.value)} rows={4} required disabled={!canEdit && editing} /></label>
+              <label className="wide-field">{tr("Corrective action")}<textarea value={form.corrective_action || ""} onChange={(event) => updateField("corrective_action", event.target.value)} rows={3} disabled={!canEdit && editing} /></label>
+              {editing && canVerify ? <label className="wide-field">{tr("Verification notes")}<textarea value={form.verification_notes || ""} onChange={(event) => updateField("verification_notes", event.target.value)} rows={3} placeholder={tr("Describe the evidence checked and the verified outcome...")} /></label> : null}
+            </div>
+
+            {editing ? (
+              <section className="detail-panel defect-evidence-panel">
+                <div className="table-header"><strong>Corrective Evidence</strong><span>{files.length}</span></div>
+                <div className="request-file-list">
+                  {files.map((file) => <button className="request-file" type="button" key={file.id} onClick={() => downloadFile(file)}><Download size={16} /><span>{file.original_filename}</span><small>{tr(file.evidence_stage)} · {tr(file.visibility)}</small></button>)}
+                  {!files.length ? <div className="empty-state">No evidence uploaded yet.</div> : null}
+                </div>
+                {canEdit ? <div className="defect-evidence-controls">
+                  <select value={fileStage} onChange={(event) => setFileStage(event.target.value)}>{["Identification", "Remediation", "Verification"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}</select>
+                  {!isCustomer ? <select value={fileVisibility} onChange={(event) => setFileVisibility(event.target.value)}><option value="Customer Visible">{tr("Customer Visible")}</option><option value="Internal">{tr("Internal")}</option></select> : null}
+                  <label className="secondary-button file-upload-button"><Plus size={16} />{tr("Upload Evidence")}<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={uploadFile} hidden /></label>
+                </div> : null}
+              </section>
+            ) : null}
+
+            <div className="form-actions defect-actions">
+              <div>
+                {editing && canEdit && !editing.work_order_id ? <button className="secondary-button" type="button" onClick={makeWorkOrder} disabled={busy}>{tr("Create Work Order")}</button> : null}
+                {editing && canVerify && editing.status === "Awaiting Verification" ? <button className="secondary-button" type="button" onClick={verifyCurrent} disabled={busy}>{tr("Verify Remediation")}</button> : null}
+                {editing && canClose && editing.status === "Verified" ? <button className="secondary-button" type="button" onClick={closeCurrent} disabled={busy}>{tr("Close Defect")}</button> : null}
+              </div>
+              <div><button className="secondary-button" type="button" onClick={closeForm}>{tr("Cancel")}</button>{canEdit ? <button className="primary-action" type="submit" disabled={busy}><Save size={18} />{busy ? tr("Saving...") : tr("Save Defect")}</button> : null}</div>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ServiceRequestsPage({ user, language }) {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [buildings, setBuildings] = useState([]);
@@ -4525,6 +5020,7 @@ function ServiceRequestsPage({ user }) {
   const canAssign = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_ASSIGN);
   const canConvert = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_CONVERT);
   const canClose = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_CLOSE);
+  const tr = (value) => translateText(value, language);
 
   async function loadReferenceData() {
     if (isCustomer) {
@@ -4810,20 +5306,12 @@ function ServiceRequestsPage({ user }) {
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search requests, customers, buildings or references..." />
         </div>
         <select value={priority} onChange={(event) => setPriority(event.target.value)}>
-          <option value="">All priorities</option>
-          <option>Low</option>
-          <option>Normal</option>
-          <option>High</option>
-          <option>Critical</option>
+          <option value="">{tr("All priorities")}</option>
+          {["Low", "Normal", "High", "Critical"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
         </select>
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
-          <option value="">All statuses</option>
-          <option>New</option>
-          <option>Under Review</option>
-          <option>Approved</option>
-          <option>Converted</option>
-          <option>Closed</option>
-          <option>Rejected</option>
+          <option value="">{tr("All statuses")}</option>
+          {["New", "Under Review", "Approved", "Converted", "Closed", "Rejected"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
         </select>
         <button className="secondary-button" type="submit">Search</button>
       </form>
@@ -4885,7 +5373,7 @@ function ServiceRequestsPage({ user }) {
               <label>
                 Customer
                 <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)} required disabled={isCustomer && editingRequest}>
-                  <option value="">Select customer</option>
+                  <option value="">{tr("Select customer")}</option>
                   {customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>{customer.company_name}</option>
                   ))}
@@ -4894,35 +5382,28 @@ function ServiceRequestsPage({ user }) {
               <label>
                 Building
                 <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)} disabled={!customerCanEdit}>
-                  <option value="">No building</option>
+                  <option value="">{tr("No building")}</option>
                   {availableBuildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
                 </select>
               </label>
               <label>
                 Asset
                 <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)} disabled={!customerCanEdit}>
-                  <option value="">No asset</option>
+                  <option value="">{tr("No asset")}</option>
                   {availableAssets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_reference || asset.asset_tag} · {asset.asset_name}</option>)}
                 </select>
               </label>
               <label>
                 Category
                 <select value={form.category} onChange={(event) => updateField("category", event.target.value)} disabled={!customerCanEdit}>
-                  <option>Maintenance</option>
-                  <option>Compliance</option>
-                  <option>Defect</option>
-                  <option>Quote</option>
-                  <option>Other</option>
+                  {["Maintenance", "Compliance", "Defect", "Quote", "Other"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
                 </select>
               </label>
               <Field label="Title" value={form.title} onChange={(value) => updateField("title", value)} required disabled={!customerCanEdit} />
               <label>
                 Priority
                 <select value={form.priority} onChange={(event) => updateField("priority", event.target.value)} disabled={!customerCanEdit}>
-                  <option>Low</option>
-                  <option>Normal</option>
-                  <option>High</option>
-                  <option>Critical</option>
+                  {["Low", "Normal", "High", "Critical"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
                 </select>
               </label>
               <Field label="Requester name" value={form.requester_name} onChange={(value) => updateField("requester_name", value)} disabled={!customerCanEdit} />
@@ -4934,19 +5415,16 @@ function ServiceRequestsPage({ user }) {
                   <label>
                     Status
                     <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
-                      <option>New</option>
-                      <option>Under Review</option>
-                      <option>Approved</option>
-                      <option>Rejected</option>
-                      {editingRequest.status === "Converted" ? <option>Converted</option> : null}
-                      {editingRequest.status === "Closed" ? <option>Closed</option> : null}
+                      {["New", "Under Review", "Approved", "Rejected"].map((item) => <option value={item} key={item}>{tr(item)}</option>)}
+                      {editingRequest.status === "Converted" ? <option value="Converted">{tr("Converted")}</option> : null}
+                      {editingRequest.status === "Closed" ? <option value="Closed">{tr("Closed")}</option> : null}
                     </select>
                   </label>
                   {canAssign ? (
                     <label>
                       Assigned to
                       <select value={form.assigned_user_id} onChange={(event) => updateField("assigned_user_id", event.target.value)}>
-                        <option value="">Unassigned</option>
+                        <option value="">{tr("Unassigned")}</option>
                         {staffUsers.map((staff) => <option key={staff.id} value={staff.id}>{staff.name} · {staff.role}</option>)}
                       </select>
                     </label>
@@ -4982,8 +5460,8 @@ function ServiceRequestsPage({ user }) {
                     <div className="request-update-compose">
                       {!isCustomer ? (
                         <select value={updateVisibility} onChange={(event) => setUpdateVisibility(event.target.value)}>
-                          <option>Customer Visible</option>
-                          <option>Internal</option>
+                          <option value="Customer Visible">{tr("Customer Visible")}</option>
+                          <option value="Internal">{tr("Internal")}</option>
                         </select>
                       ) : null}
                       <textarea value={updateMessage} onChange={(event) => setUpdateMessage(event.target.value)} rows={2} placeholder="Add an update..." />

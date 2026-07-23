@@ -820,3 +820,54 @@ export async function closeServiceRequest(id, message) {
     body: JSON.stringify({ message })
   });
 }
+
+export async function getDefectSummary() {
+  return apiRequest("/api/defects/summary");
+}
+
+export async function listDefects(params = {}) {
+  const query = new URLSearchParams();
+  ["search", "status", "severity", "risk_rating"].forEach((key) => {
+    if (params[key]) query.set(key, params[key]);
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/defects${suffix}`);
+}
+
+export async function createDefect(payload) {
+  return apiRequest("/api/defects", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateDefect(id, payload) {
+  return apiRequest(`/api/defects/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export async function createDefectWorkOrder(id) {
+  return apiRequest(`/api/defects/${id}/work-order`, { method: "POST" });
+}
+
+export async function verifyDefect(id, verification_notes) {
+  return apiRequest(`/api/defects/${id}/verify`, {
+    method: "POST",
+    body: JSON.stringify({ verification_notes })
+  });
+}
+
+export async function closeDefect(id) {
+  return apiRequest(`/api/defects/${id}/close`, { method: "POST" });
+}
+
+export async function listDefectFiles(id) {
+  return apiRequest(`/api/defects/${id}/files`);
+}
+
+export async function uploadDefectFile(id, payload) {
+  return apiRequest(`/api/defects/${id}/files`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function downloadDefectFile(id, fileId) {
+  return apiBlobRequest(`/api/defects/${id}/files/${fileId}/download`);
+}

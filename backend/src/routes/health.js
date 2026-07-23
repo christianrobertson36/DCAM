@@ -7,7 +7,7 @@ router.get("/health", (req, res) => {
     ok: true,
     app: "DCAM API",
     name: "Digital Compliance & Asset Management",
-    version: "v42",
+    version: "v43",
     status: "healthy",
     auth: "login-roles-permissions-foundation",
     crm: "customers-foundation",
@@ -38,6 +38,7 @@ router.get("/health", (req, res) => {
     branding: "branding-white-label-settings-foundation",
     branded_documents: "branded-report-certificate-pdf-foundation",
     service_desk: "customer-requests-service-desk-foundation",
+    defects: "defects-corrective-actions-foundation",
     modules: [
       "CRM",
       "Buildings / Sites",

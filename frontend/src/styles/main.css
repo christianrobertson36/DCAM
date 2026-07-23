@@ -2296,6 +2296,93 @@ h1 {
   }
 }
 /* v42 Customer Requests & Service Desk */
+.defect-filter {
+  grid-template-columns: minmax(260px, 1fr) 170px 210px auto;
+}
+
+.defect-row {
+  grid-template-columns: minmax(220px, 1.35fr) minmax(170px, 1fr) minmax(140px, 0.75fr) minmax(185px, 1fr) auto;
+}
+
+.defect-form {
+  width: min(1120px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.risk-badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.risk-badge.low {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.risk-badge.medium {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.risk-badge.high,
+.risk-badge.critical {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.risk-badge.critical {
+  box-shadow: inset 0 0 0 1px #ef4444;
+}
+
+.defect-evidence-panel {
+  margin-top: 22px;
+}
+
+.defect-evidence-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.defect-actions,
+.defect-actions > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+@media (max-width: 980px) {
+  .defect-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .defect-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .defect-row {
+    grid-template-columns: 1fr;
+  }
+
+  .defect-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .defect-actions > div {
+    flex-wrap: wrap;
+  }
+}
+
 .service-request-filter {
   grid-template-columns: minmax(260px, 1fr) 170px 190px auto;
 }

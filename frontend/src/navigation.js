@@ -52,6 +52,7 @@ export const navigationGroups = [
     items: [
       { id: "work-orders", label: "Work Orders", path: "/work-orders", icon: Save, requiredPermission: "work_orders:view", requiredRole: null, requiredModule: "cmms", status: "active" },
       { id: "service-desk", label: "Service Desk", path: "/service-desk", icon: ClipboardCheck, requiredPermission: "service_requests:view", requiredRole: null, requiredModule: "cmms", status: "active" },
+      { id: "defects", label: "Defects", path: "/defects", icon: ClipboardCheck, requiredPermission: "defects:view", requiredRole: null, requiredModule: "cmms", status: "active" },
       { id: "schedule", label: "Schedule", path: "/schedule", icon: CalendarDays, requiredPermission: "schedule:view", requiredRole: null, requiredModule: "cmms", status: "active" },
       { id: "maintenance-plans", label: "Maintenance Plans", path: "/maintenance-plans", icon: CalendarDays, requiredPermission: "maintenance_plans:view", requiredRole: null, requiredModule: "cmms", status: "active" },
       { id: "my-jobs", label: "My Jobs", path: "/my-jobs", icon: ClipboardCheck, requiredPermission: "technician_jobs:view", requiredRole: null, requiredModule: "technician", status: "active" }
