@@ -752,3 +752,71 @@ export async function resetAdminUserPassword(id, password) {
 export async function listAdminUserAudit(id) {
   return apiRequest(`/api/admin/users/${id}/audit`);
 }
+
+export async function getServiceRequestSummary() {
+  return apiRequest("/api/service-requests/summary");
+}
+
+export async function listServiceRequests(params = {}) {
+  const query = new URLSearchParams();
+
+  ["search", "status", "priority", "category", "customer_id", "assigned_user_id"].forEach((key) => {
+    if (params[key]) query.set(key, params[key]);
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest(`/api/service-requests${suffix}`);
+}
+
+export async function createServiceRequest(payload) {
+  return apiRequest("/api/service-requests", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateServiceRequest(id, payload) {
+  return apiRequest(`/api/service-requests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listServiceRequestUpdates(id) {
+  return apiRequest(`/api/service-requests/${id}/updates`);
+}
+
+export async function addServiceRequestUpdate(id, payload) {
+  return apiRequest(`/api/service-requests/${id}/updates`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listServiceRequestFiles(id) {
+  return apiRequest(`/api/service-requests/${id}/files`);
+}
+
+export async function uploadServiceRequestFile(id, payload) {
+  return apiRequest(`/api/service-requests/${id}/files`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function downloadServiceRequestFile(id, fileId) {
+  return apiBlobRequest(`/api/service-requests/${id}/files/${fileId}/download`);
+}
+
+export async function convertServiceRequest(id) {
+  return apiRequest(`/api/service-requests/${id}/convert`, {
+    method: "POST"
+  });
+}
+
+export async function closeServiceRequest(id, message) {
+  return apiRequest(`/api/service-requests/${id}/close`, {
+    method: "POST",
+    body: JSON.stringify({ message })
+  });
+}

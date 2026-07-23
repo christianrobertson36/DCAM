@@ -171,6 +171,7 @@ router.get("/dashboard", requirePermission(PERMISSIONS.CUSTOMER_PORTAL_VIEW), as
         `
         SELECT
           a.id,
+          a.building_id,
           a.asset_reference,
           a.asset_name,
           a.asset_category,

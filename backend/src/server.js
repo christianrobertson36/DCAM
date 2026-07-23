@@ -24,6 +24,7 @@ const formTemplatesRoutes = require("./routes/formTemplates");
 const reportsRoutes = require("./routes/reports");
 const certificatesRoutes = require("./routes/certificates");
 const customerPortalRoutes = require("./routes/customerPortal");
+const serviceRequestsRoutes = require("./routes/serviceRequests");
 const usersRoutes = require("./routes/users");
 const moduleRoutes = require("./routes/modules");
 
@@ -52,6 +53,7 @@ app.use("/api/form-templates", formTemplatesRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/certificates", certificatesRoutes);
 app.use("/api/customer-portal", customerPortalRoutes);
+app.use("/api/service-requests", serviceRequestsRoutes);
 app.use("/api/admin/users", usersRoutes);
 app.use("/api/technician", technicianRoutes);
 app.use("/api/settings", settingsRoutes);

@@ -34,6 +34,7 @@ import {
   createMaintenancePlan,
   createPipelineOpportunity,
   createReport,
+  createServiceRequest,
   createTechnicianJobSignature,
   createTechnicianJobChecklistItem,
   createStaffProfile,
@@ -46,6 +47,7 @@ import {
   exportReport,
   exportCertificate,
   downloadTechnicianJobFile,
+  downloadServiceRequestFile,
   getAssetSummary,
   getBuildingSummary,
   getBranding,
@@ -59,6 +61,7 @@ import {
   getMe,
   getPipelineSummary,
   getReportSummary,
+  getServiceRequestSummary,
   getSampleDataStatus,
   getScheduleSummary,
   getStaffSummary,
@@ -83,6 +86,9 @@ import {
   listFormTemplates,
   listScheduleAssignments,
   listReports,
+  listServiceRequestFiles,
+  listServiceRequests,
+  listServiceRequestUpdates,
   listStaffProfiles,
   listStaffQualifications,
   listStaffUsers,
@@ -92,6 +98,9 @@ import {
   listTechnicianJobs,
   listWorkOrders,
   login,
+  addServiceRequestUpdate,
+  closeServiceRequest,
+  convertServiceRequest,
   removeBrandingAsset,
   updateAsset,
   updateAdminUser,
@@ -101,6 +110,7 @@ import {
   updateContact,
   updateFormTemplate,
   updateReport,
+  updateServiceRequest,
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
@@ -112,6 +122,7 @@ import {
   updateTechnicianJob,
   updateWorkOrder,
   uploadTechnicianJobFile,
+  uploadServiceRequestFile,
   uploadBrandingAsset,
   updateBranding,
   resetAdminUserPassword
@@ -725,6 +736,12 @@ const PERMISSIONS = {
   CERTIFICATES_ISSUE: "certificates:issue",
   CERTIFICATES_REVOKE: "certificates:revoke",
   CERTIFICATES_EXPORT: "certificates:export",
+  SERVICE_REQUESTS_VIEW: "service_requests:view",
+  SERVICE_REQUESTS_CREATE: "service_requests:create",
+  SERVICE_REQUESTS_EDIT: "service_requests:edit",
+  SERVICE_REQUESTS_ASSIGN: "service_requests:assign",
+  SERVICE_REQUESTS_CONVERT: "service_requests:convert",
+  SERVICE_REQUESTS_CLOSE: "service_requests:close",
   CUSTOMER_PORTAL_VIEW: "customer_portal:view",
   TECHNICIAN_JOBS_VIEW: "technician_jobs:view",
   TECHNICIAN_JOBS_UPDATE: "technician_jobs:update",
@@ -856,6 +873,22 @@ const emptyWorkOrder = {
   assigned_user_id: "",
   due_date: "",
   completion_notes: ""
+};
+
+const emptyServiceRequest = {
+  customer_id: "",
+  building_id: "",
+  asset_id: "",
+  requester_name: "",
+  requester_email: "",
+  requester_phone: "",
+  category: "Maintenance",
+  title: "",
+  description: "",
+  priority: "Normal",
+  status: "New",
+  assigned_user_id: "",
+  sla_due_at: ""
 };
 
 const emptyScheduleAssignment = {
@@ -1244,7 +1277,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
+  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
     ? activePage
     : "DCAM Operating System";
 
@@ -1313,7 +1346,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v41 Branded Documents</p>
+            <p className="eyebrow">v42 Service Desk</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1340,6 +1373,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
         {activePage === "Assets" ? <AssetsPage user={user} /> : null}
         {activePage === "Work Orders" ? <WorkOrdersPage user={user} /> : null}
+        {activePage === "Service Desk" ? <ServiceRequestsPage user={user} /> : null}
         {activePage === "Schedule" ? <SchedulePage user={user} /> : null}
         {activePage === "Maintenance Plans" ? <MaintenancePlansPage user={user} /> : null}
         {activePage === "Compliance Services" ? <ComplianceServicesPage user={user} /> : null}
@@ -1360,7 +1394,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
           />
         ) : null}
         {activePage === "Users & Access" ? <UsersAccessPage currentUser={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
+        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
       </main>
     </div>
   );
@@ -1522,8 +1556,26 @@ function GlobalSearch({ user, onNavigate }) {
 
 async function searchPermittedModules(user, query) {
   if (user.role === "Customer" && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
-    const portal = await getCustomerPortalDashboard();
-    return buildPortalSearchGroups(portal, query);
+    const [portal, serviceRequests] = await Promise.all([
+      getCustomerPortalDashboard(),
+      hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_VIEW)
+        ? listServiceRequests({ search: query })
+        : Promise.resolve({ service_requests: [] })
+    ]);
+    return [
+      ...buildPortalSearchGroups(portal, query),
+      {
+        id: "portal-service-requests",
+        label: "Service Requests",
+        results: (serviceRequests.service_requests || []).slice(0, 5).map((item) => ({
+          id: `portal-service-${item.id}`,
+          page: "Service Desk",
+          title: item.title,
+          meta: [item.request_reference, item.building_name].filter(Boolean).join(" · "),
+          status: item.status
+        }))
+      }
+    ];
   }
 
   const sources = [
@@ -1532,6 +1584,7 @@ async function searchPermittedModules(user, query) {
     ["buildings", "Buildings / Sites", "Buildings", PERMISSIONS.BUILDINGS_VIEW, () => listBuildings({ search: query }), "buildings", (item) => ({ title: item.name, meta: [item.customer_name, item.city, item.postcode].filter(Boolean).join(" · "), status: item.status })],
     ["assets", "Assets", "Assets", PERMISSIONS.ASSETS_VIEW, () => listAssets({ search: query }), "assets", (item) => ({ title: item.asset_name, meta: [item.asset_reference, item.asset_tag, item.building_name].filter(Boolean).join(" · "), status: item.status })],
     ["work-orders", "Work Orders", "Work Orders", PERMISSIONS.WORK_ORDERS_VIEW, () => listWorkOrders({ search: query }), "work_orders", (item) => ({ title: item.title, meta: [item.work_order_reference, item.customer_name, item.building_name].filter(Boolean).join(" · "), status: item.status })],
+    ["service-requests", "Service Requests", "Service Desk", PERMISSIONS.SERVICE_REQUESTS_VIEW, () => listServiceRequests({ search: query }), "service_requests", (item) => ({ title: item.title, meta: [item.request_reference, item.customer_name, item.building_name].filter(Boolean).join(" · "), status: item.status })],
     ["reports", "Reports", "Reports", PERMISSIONS.REPORTS_VIEW, () => listReports({ search: query }), "reports", (item) => ({ title: item.report_title, meta: [item.report_reference, item.report_type, item.customer_name].filter(Boolean).join(" · "), status: item.status })],
     ["certificates", "Certificates", "Certificates", PERMISSIONS.CERTIFICATES_VIEW, () => listCertificates({ search: query }), "certificates", (item) => ({ title: item.certificate_title, meta: [item.certificate_reference, item.certificate_type, item.customer_name].filter(Boolean).join(" · "), status: item.status })],
     ["people", "People", "People", PERMISSIONS.STAFF_VIEW, () => listStaffProfiles({ search: query }), "staff_profiles", (item) => ({ title: item.user_name, meta: [item.job_title, item.role, item.email].filter(Boolean).join(" · "), status: item.availability_status })]
@@ -1582,6 +1635,7 @@ function AlertsCentre({ user, onNavigate }) {
     const requests = [
       ["assets", PERMISSIONS.ASSETS_VIEW, getAssetSummary],
       ["workOrders", PERMISSIONS.WORK_ORDERS_VIEW, getWorkOrderSummary],
+      ["serviceRequests", PERMISSIONS.SERVICE_REQUESTS_VIEW, getServiceRequestSummary],
       ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
       ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
       ["certificates", PERMISSIONS.CERTIFICATES_VIEW, getCertificateSummary],
@@ -1690,6 +1744,7 @@ function buildOperationalAlerts(data) {
     if (Number(condition || 0) > 0) alerts.push(alert);
   };
   const workOrders = summary("workOrders");
+  const serviceRequests = summary("serviceRequests");
   const maintenance = summary("maintenance");
   const compliance = summary("compliance");
   const certificates = summary("certificates");
@@ -1697,6 +1752,8 @@ function buildOperationalAlerts(data) {
   const expiringQualifications = (data.staff?.staff_profiles || []).reduce((total, profile) => total + Number(profile.expiring_qualifications || 0), 0);
 
   add(workOrders.overdue, { id: "work-overdue", severity: "danger", title: `${workOrders.overdue} overdue work order${workOrders.overdue === 1 ? "" : "s"}`, text: "Review due dates and assignments.", page: "Work Orders" });
+  add(serviceRequests.overdue, { id: "requests-overdue", severity: "danger", title: `${serviceRequests.overdue} service request SLA${serviceRequests.overdue === 1 ? " is" : "s are"} overdue`, text: "Review triage, ownership and customer updates.", page: "Service Desk" });
+  add(serviceRequests.new, { id: "requests-new", severity: "warning", title: `${serviceRequests.new} new service request${serviceRequests.new === 1 ? "" : "s"}`, text: "New customer requests are waiting for review.", page: "Service Desk" });
   add(maintenance.overdue, { id: "maintenance-overdue", severity: "danger", title: `${maintenance.overdue} maintenance plan${maintenance.overdue === 1 ? " is" : "s are"} overdue`, text: "Planned maintenance requires action.", page: "Maintenance Plans" });
   add(compliance.failed, { id: "compliance-failed", severity: "danger", title: `${compliance.failed} failed compliance service${compliance.failed === 1 ? "" : "s"}`, text: "Review outcomes and corrective action.", page: "Compliance Services" });
   add(certificates.expired, { id: "certificates-expired", severity: "danger", title: `${certificates.expired} expired certificate${certificates.expired === 1 ? "" : "s"}`, text: "Review renewal or replacement status.", page: "Certificates" });
@@ -1726,6 +1783,7 @@ function DashboardPage({ user }) {
       ["buildings", PERMISSIONS.BUILDINGS_VIEW, getBuildingSummary],
       ["assets", PERMISSIONS.ASSETS_VIEW, getAssetSummary],
       ["workOrders", PERMISSIONS.WORK_ORDERS_VIEW, getWorkOrderSummary],
+      ["serviceRequests", PERMISSIONS.SERVICE_REQUESTS_VIEW, getServiceRequestSummary],
       ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
       ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
       ["reports", PERMISSIONS.REPORTS_VIEW, getReportSummary],
@@ -1733,9 +1791,17 @@ function DashboardPage({ user }) {
     ].filter(([, permission]) => hasPermission(user, permission));
 
     try {
-      if (!requests.length && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
-        const portal = await getCustomerPortalDashboard();
-        setDashboard({ portal: portal.summary || {} });
+      if (user.role === "Customer" && hasPermission(user, PERMISSIONS.CUSTOMER_PORTAL_VIEW)) {
+        const [portal, serviceRequests] = await Promise.all([
+          getCustomerPortalDashboard(),
+          hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_VIEW)
+            ? getServiceRequestSummary()
+            : Promise.resolve({ summary: {} })
+        ]);
+        setDashboard({
+          portal: portal.summary || {},
+          serviceRequests: serviceRequests.summary || {}
+        });
       } else {
         const results = await Promise.allSettled(requests.map(([, , request]) => request()));
         const nextDashboard = {};
@@ -1846,7 +1912,9 @@ function buildDashboardCards(data) {
       { title: "Buildings", value: data.portal.buildings || 0, text: "Sites available to your customer account." },
       { title: "Assets", value: data.portal.assets || 0, text: "Assets within your permitted sites." },
       { title: "Open Work", value: data.portal.open_work_orders || 0, text: "Current work orders requiring attention.", tone: data.portal.open_work_orders ? "attention" : "" },
-      { title: "Documents", value: (data.portal.reports || 0) + (data.portal.certificates || 0), text: "Reports and certificates available to you." }
+      data.serviceRequests
+        ? { title: "Service Requests", value: data.serviceRequests.total || 0, text: `${data.serviceRequests.new || 0} new · ${data.serviceRequests.overdue || 0} SLA overdue.`, tone: data.serviceRequests.overdue ? "attention" : "" }
+        : { title: "Documents", value: (data.portal.reports || 0) + (data.portal.certificates || 0), text: "Reports and certificates available to you." }
     ];
   }
 
@@ -1874,6 +1942,11 @@ function buildDashboardSections(data) {
       { label: "Certificates", value: data.portal.certificates || 0 },
       { label: "Open work", value: data.portal.open_work_orders || 0, tone: data.portal.open_work_orders ? "warning" : "" }
     ] });
+    if (data.serviceRequests) sections.push({ eyebrow: "Service desk", title: "Your requests", total: data.serviceRequests.total || 0, stats: [
+      { label: "New", value: data.serviceRequests.new || 0 },
+      { label: "Under review", value: data.serviceRequests.under_review || 0 },
+      { label: "SLA overdue", value: data.serviceRequests.overdue || 0, tone: data.serviceRequests.overdue ? "danger" : "" }
+    ] });
     return sections;
   }
 
@@ -1881,6 +1954,11 @@ function buildDashboardSections(data) {
     { label: "Open", value: data.workOrders.open || 0 },
     { label: "In progress", value: data.workOrders.in_progress || 0 },
     { label: "Overdue", value: data.workOrders.overdue || 0, tone: data.workOrders.overdue ? "danger" : "" }
+  ] });
+  if (data.serviceRequests) sections.push({ eyebrow: "Service desk", title: "Customer requests", total: data.serviceRequests.total || 0, stats: [
+    { label: "New", value: data.serviceRequests.new || 0 },
+    { label: "Under review", value: data.serviceRequests.under_review || 0 },
+    { label: "SLA overdue", value: data.serviceRequests.overdue || 0, tone: data.serviceRequests.overdue ? "danger" : "" }
   ] });
   if (data.compliance) sections.push({ eyebrow: "Compliance", title: "Service outcomes", total: data.compliance.total || 0, stats: [
     { label: "Passed", value: data.compliance.passed || 0, tone: "success" },
@@ -4414,6 +4492,550 @@ function PeoplePage({ user }) {
                 <Save size={18} />
                 {busy ? "Saving..." : "Save Profile"}
               </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ServiceRequestsPage({ user }) {
+  const [requests, setRequests] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [buildings, setBuildings] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [summary, setSummary] = useState({});
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [priority, setPriority] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState(null);
+  const [form, setForm] = useState(emptyServiceRequest);
+  const [updates, setUpdates] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [updateMessage, setUpdateMessage] = useState("");
+  const [updateVisibility, setUpdateVisibility] = useState("Customer Visible");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const isCustomer = user.role === "Customer";
+  const canCreate = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_CREATE);
+  const canEdit = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_EDIT);
+  const canAssign = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_ASSIGN);
+  const canConvert = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_CONVERT);
+  const canClose = hasPermission(user, PERMISSIONS.SERVICE_REQUESTS_CLOSE);
+
+  async function loadReferenceData() {
+    if (isCustomer) {
+      const portal = await getCustomerPortalDashboard();
+      setCustomers(portal.customers || []);
+      setBuildings(portal.buildings || []);
+      setAssets(portal.assets || []);
+      return;
+    }
+
+    const [customerData, buildingData, assetData, staffData] = await Promise.all([
+      hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW)
+        ? listCustomers()
+        : Promise.resolve({ customers: [] }),
+      hasPermission(user, PERMISSIONS.BUILDINGS_VIEW)
+        ? listBuildings()
+        : Promise.resolve({ buildings: [] }),
+      hasPermission(user, PERMISSIONS.ASSETS_VIEW)
+        ? listAssets()
+        : Promise.resolve({ assets: [] }),
+      hasPermission(user, PERMISSIONS.STAFF_VIEW)
+        ? listStaffUsers()
+        : Promise.resolve({ users: [] })
+    ]);
+
+    setCustomers(customerData.customers || []);
+    setBuildings(buildingData.buildings || []);
+    setAssets(assetData.assets || []);
+    setStaffUsers(staffData.users || []);
+  }
+
+  async function loadRequests() {
+    const [summaryData, requestData] = await Promise.all([
+      getServiceRequestSummary(),
+      listServiceRequests({ search, status, priority })
+    ]);
+    setSummary(summaryData.summary || {});
+    setRequests(requestData.service_requests || []);
+  }
+
+  useEffect(() => {
+    Promise.all([loadRequests(), loadReferenceData()])
+      .catch((err) => setError(err.message));
+  }, []);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    setError("");
+    try {
+      await loadRequests();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function updateField(field, value) {
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+      if (field === "customer_id") {
+        next.building_id = "";
+        next.asset_id = "";
+      }
+      if (field === "building_id") {
+        next.asset_id = "";
+      }
+      return next;
+    });
+  }
+
+  function openCreateForm() {
+    const customerId = customers.length === 1 ? String(customers[0].id) : "";
+    setEditingRequest(null);
+    setForm({
+      ...emptyServiceRequest,
+      customer_id: customerId,
+      requester_name: user.name || "",
+      requester_email: user.email || ""
+    });
+    setUpdates([]);
+    setFiles([]);
+    setFormOpen(true);
+    setError("");
+  }
+
+  async function openEditForm(request) {
+    setEditingRequest(request);
+    setForm({
+      ...emptyServiceRequest,
+      ...request,
+      customer_id: request.customer_id || "",
+      building_id: request.building_id || "",
+      asset_id: request.asset_id || "",
+      assigned_user_id: request.assigned_user_id || "",
+      sla_due_at: formatDateTimeForInput(request.sla_due_at)
+    });
+    setFormOpen(true);
+    setError("");
+
+    try {
+      const [updatesData, filesData] = await Promise.all([
+        listServiceRequestUpdates(request.id),
+        listServiceRequestFiles(request.id)
+      ]);
+      setUpdates(updatesData.updates || []);
+      setFiles(filesData.files || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingRequest(null);
+    setForm(emptyServiceRequest);
+    setUpdates([]);
+    setFiles([]);
+    setUpdateMessage("");
+  }
+
+  async function saveRequest(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const payload = {
+        ...form,
+        customer_id: Number(form.customer_id),
+        building_id: form.building_id ? Number(form.building_id) : null,
+        asset_id: form.asset_id ? Number(form.asset_id) : null,
+        assigned_user_id: form.assigned_user_id
+          ? Number(form.assigned_user_id)
+          : null,
+        sla_due_at: form.sla_due_at || null
+      };
+
+      if (editingRequest) {
+        await updateServiceRequest(editingRequest.id, payload);
+      } else {
+        await createServiceRequest(payload);
+      }
+
+      closeForm();
+      await loadRequests();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitUpdate() {
+    if (!editingRequest || !updateMessage.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await addServiceRequestUpdate(editingRequest.id, {
+        message: updateMessage,
+        visibility: isCustomer ? "Customer Visible" : updateVisibility
+      });
+      const data = await listServiceRequestUpdates(editingRequest.id);
+      setUpdates(data.updates || []);
+      setUpdateMessage("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !editingRequest) return;
+    setBusy(true);
+    setError("");
+    try {
+      await uploadServiceRequestFile(editingRequest.id, {
+        filename: file.name,
+        content_type: file.type,
+        data: await fileToBase64(file),
+        visibility: isCustomer ? "Customer Visible" : updateVisibility
+      });
+      const data = await listServiceRequestFiles(editingRequest.id);
+      setFiles(data.files || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadFile(file) {
+    setError("");
+    try {
+      const blob = await downloadServiceRequestFile(editingRequest.id, file.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.original_filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function convertRequest() {
+    if (!editingRequest || !window.confirm("Convert this request into a work order?")) return;
+    setBusy(true);
+    setError("");
+    try {
+      await convertServiceRequest(editingRequest.id);
+      closeForm();
+      await loadRequests();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function closeRequest() {
+    if (!editingRequest || !window.confirm("Close this service request?")) return;
+    setBusy(true);
+    setError("");
+    try {
+      await closeServiceRequest(editingRequest.id, "Service request closed.");
+      closeForm();
+      await loadRequests();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const selectedCustomerId = Number(form.customer_id);
+  const selectedBuildingId = Number(form.building_id);
+  const availableBuildings = buildings.filter(
+    (building) => !selectedCustomerId || Number(building.customer_id) === selectedCustomerId
+  );
+  const availableAssets = assets.filter(
+    (asset) => !selectedBuildingId || Number(asset.building_id) === selectedBuildingId
+  );
+  const customerCanEdit = !isCustomer || editingRequest?.status === "New";
+  const summaryCards = [
+    ["Total", summary.total || 0],
+    ["New", summary.new || 0],
+    ["Under Review", summary.under_review || 0],
+    ["Approved", summary.approved || 0],
+    ["Converted", summary.converted || 0],
+    ["SLA Overdue", summary.overdue || 0]
+  ];
+
+  return (
+    <div className="service-desk-page">
+      <section className="page-intro">
+        <div>
+          <p className="eyebrow">Customer Requests & Service Desk</p>
+          <h2>One queue from request to work order</h2>
+          <p>Capture requests, keep customers informed, monitor SLA dates and convert approved work cleanly.</p>
+        </div>
+        {canCreate ? (
+          <button className="primary-action" type="button" onClick={openCreateForm}>
+            <Plus size={18} />
+            New Request
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mini-card-grid">
+        {summaryCards.map(([label, value]) => (
+          <article className={`mini-card ${label === "SLA Overdue" && value ? "attention" : ""}`} key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <form className="filter-bar service-request-filter" onSubmit={handleSearch}>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search requests, customers, buildings or references..." />
+        </div>
+        <select value={priority} onChange={(event) => setPriority(event.target.value)}>
+          <option value="">All priorities</option>
+          <option>Low</option>
+          <option>Normal</option>
+          <option>High</option>
+          <option>Critical</option>
+        </select>
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">All statuses</option>
+          <option>New</option>
+          <option>Under Review</option>
+          <option>Approved</option>
+          <option>Converted</option>
+          <option>Closed</option>
+          <option>Rejected</option>
+        </select>
+        <button className="secondary-button" type="submit">Search</button>
+      </form>
+
+      {error ? <div className="login-error">{error}</div> : null}
+
+      <section className="table-card">
+        <div className="table-header">
+          <strong>Service Requests</strong>
+          <span>{requests.length} shown</span>
+        </div>
+        {requests.length ? (
+          <div className="customer-list">
+            {requests.map((request) => (
+              <div className={`customer-row service-request-row ${request.sla_overdue ? "sla-overdue" : ""}`} key={request.id}>
+                <div>
+                  <strong>{request.title}</strong>
+                  <span>{request.request_reference} · {request.category}</span>
+                </div>
+                <div>
+                  <span>{request.customer_name}</span>
+                  <span>{request.building_name || "No building selected"}</span>
+                </div>
+                <div>
+                  <span>{request.priority} priority</span>
+                  <span>{request.assigned_user_name || "Unassigned"}</span>
+                </div>
+                <div>
+                  <span className={`status-badge ${statusClassName(request.status)}`}>{request.status}</span>
+                  <span className={request.sla_overdue ? "overdue-text" : ""}>
+                    {request.sla_due_at ? `SLA: ${formatDateTimeForDisplay(request.sla_due_at)}` : "No SLA date"}
+                  </span>
+                </div>
+                <div className="row-actions">
+                  <button className="secondary-button" type="button" onClick={() => openEditForm(request)}>
+                    {canEdit ? "Open" : "View"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">No service requests match the current filters.</div>
+        )}
+      </section>
+
+      {formOpen ? (
+        <div className="modal-backdrop">
+          <form className="customer-form service-request-form" onSubmit={saveRequest}>
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{editingRequest ? editingRequest.request_reference : "New Service Request"}</p>
+                <h2>{editingRequest ? editingRequest.title : "Create a service request"}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={closeForm}><X size={18} /></button>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Customer
+                <select value={form.customer_id} onChange={(event) => updateField("customer_id", event.target.value)} required disabled={isCustomer && editingRequest}>
+                  <option value="">Select customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>{customer.company_name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Building
+                <select value={form.building_id} onChange={(event) => updateField("building_id", event.target.value)} disabled={!customerCanEdit}>
+                  <option value="">No building</option>
+                  {availableBuildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
+                </select>
+              </label>
+              <label>
+                Asset
+                <select value={form.asset_id} onChange={(event) => updateField("asset_id", event.target.value)} disabled={!customerCanEdit}>
+                  <option value="">No asset</option>
+                  {availableAssets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_reference || asset.asset_tag} · {asset.asset_name}</option>)}
+                </select>
+              </label>
+              <label>
+                Category
+                <select value={form.category} onChange={(event) => updateField("category", event.target.value)} disabled={!customerCanEdit}>
+                  <option>Maintenance</option>
+                  <option>Compliance</option>
+                  <option>Defect</option>
+                  <option>Quote</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <Field label="Title" value={form.title} onChange={(value) => updateField("title", value)} required disabled={!customerCanEdit} />
+              <label>
+                Priority
+                <select value={form.priority} onChange={(event) => updateField("priority", event.target.value)} disabled={!customerCanEdit}>
+                  <option>Low</option>
+                  <option>Normal</option>
+                  <option>High</option>
+                  <option>Critical</option>
+                </select>
+              </label>
+              <Field label="Requester name" value={form.requester_name} onChange={(value) => updateField("requester_name", value)} disabled={!customerCanEdit} />
+              <Field label="Requester email" value={form.requester_email} onChange={(value) => updateField("requester_email", value)} type="email" disabled={!customerCanEdit} />
+              <Field label="Requester phone" value={form.requester_phone} onChange={(value) => updateField("requester_phone", value)} disabled={!customerCanEdit} />
+
+              {!isCustomer && editingRequest ? (
+                <>
+                  <label>
+                    Status
+                    <select value={form.status} onChange={(event) => updateField("status", event.target.value)}>
+                      <option>New</option>
+                      <option>Under Review</option>
+                      <option>Approved</option>
+                      <option>Rejected</option>
+                      {editingRequest.status === "Converted" ? <option>Converted</option> : null}
+                      {editingRequest.status === "Closed" ? <option>Closed</option> : null}
+                    </select>
+                  </label>
+                  {canAssign ? (
+                    <label>
+                      Assigned to
+                      <select value={form.assigned_user_id} onChange={(event) => updateField("assigned_user_id", event.target.value)}>
+                        <option value="">Unassigned</option>
+                        {staffUsers.map((staff) => <option key={staff.id} value={staff.id}>{staff.name} · {staff.role}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                  <Field label="SLA due" value={form.sla_due_at} onChange={(value) => updateField("sla_due_at", value)} type="datetime-local" />
+                </>
+              ) : null}
+
+              <label className="wide-field">
+                Description
+                <textarea value={form.description || ""} onChange={(event) => updateField("description", event.target.value)} rows={4} required disabled={!customerCanEdit} />
+              </label>
+            </div>
+
+            {editingRequest ? (
+              <div className="service-request-detail-grid">
+                <section className="detail-panel">
+                  <div className="table-header">
+                    <strong>Updates</strong>
+                    <span>{updates.length}</span>
+                  </div>
+                  <div className="request-timeline">
+                    {updates.map((update) => (
+                      <div className="timeline-entry" key={update.id}>
+                        <strong>{update.created_by_name || "DCAM"}</strong>
+                        <span>{formatDateTimeForDisplay(update.created_at)} · {update.visibility}</span>
+                        <p>{update.message}</p>
+                      </div>
+                    ))}
+                    {!updates.length ? <div className="empty-state">No updates yet.</div> : null}
+                  </div>
+                  {canEdit ? (
+                    <div className="request-update-compose">
+                      {!isCustomer ? (
+                        <select value={updateVisibility} onChange={(event) => setUpdateVisibility(event.target.value)}>
+                          <option>Customer Visible</option>
+                          <option>Internal</option>
+                        </select>
+                      ) : null}
+                      <textarea value={updateMessage} onChange={(event) => setUpdateMessage(event.target.value)} rows={2} placeholder="Add an update..." />
+                      <button className="secondary-button" type="button" onClick={submitUpdate} disabled={busy || !updateMessage.trim()}>Add Update</button>
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="detail-panel">
+                  <div className="table-header">
+                    <strong>Files & Evidence</strong>
+                    <span>{files.length}</span>
+                  </div>
+                  <div className="request-file-list">
+                    {files.map((file) => (
+                      <button className="request-file" type="button" key={file.id} onClick={() => downloadFile(file)}>
+                        <Download size={16} />
+                        <span>{file.original_filename}</span>
+                        <small>{file.visibility}</small>
+                      </button>
+                    ))}
+                    {!files.length ? <div className="empty-state">No files uploaded.</div> : null}
+                  </div>
+                  {canEdit ? (
+                    <label className="secondary-button file-upload-button">
+                      <Plus size={16} />
+                      Upload PNG, JPG, WebP or PDF
+                      <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={uploadFile} hidden />
+                    </label>
+                  ) : null}
+                </section>
+              </div>
+            ) : null}
+
+            <div className="form-actions service-request-actions">
+              <div>
+                {editingRequest && canConvert && !editingRequest.work_order_id ? (
+                  <button className="secondary-button" type="button" onClick={convertRequest} disabled={busy}>Convert to Work Order</button>
+                ) : null}
+                {editingRequest && canClose && editingRequest.status !== "Closed" ? (
+                  <button className="secondary-button" type="button" onClick={closeRequest} disabled={busy}>Close Request</button>
+                ) : null}
+              </div>
+              <div>
+                <button className="secondary-button" type="button" onClick={closeForm}>Cancel</button>
+                {canEdit && customerCanEdit ? (
+                  <button className="primary-action" type="submit" disabled={busy}>
+                    <Save size={18} />
+                    {busy ? "Saving..." : "Save Request"}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </form>
         </div>
@@ -8245,6 +8867,31 @@ function formatDateForDisplay(value) {
   return String(value).slice(0, 10);
 }
 
+function formatDateTimeForInput(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function formatDateTimeForDisplay(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleString();
+}
+
 function formatFileSize(value) {
   const size = Number(value || 0);
 
@@ -8364,7 +9011,7 @@ function RecordHistoryPanel({ entityType, entityId }) {
   );
 }
 
-function Field({ label, value, onChange, required, type = "text", placeholder = "" }) {
+function Field({ label, value, onChange, required, type = "text", placeholder = "", disabled = false }) {
   return (
     <label>
       {label}
@@ -8374,6 +9021,7 @@ function Field({ label, value, onChange, required, type = "text", placeholder = 
         onChange={(event) => onChange(event.target.value)}
         required={required}
         placeholder={placeholder}
+        disabled={disabled}
       />
     </label>
   );
