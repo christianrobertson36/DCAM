@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   ClipboardCheck,
+  CircleHelp,
   Bell,
   Download,
   Users,
@@ -20,6 +21,7 @@ import {
   X
 } from "lucide-react";
 import { getVisibleNavigation } from "./navigation";
+import HelpCenter from "./HelpCenter";
 import {
   brandingAssetUrl,
   createAsset,
@@ -183,6 +185,7 @@ const LANGUAGES = {
 const TRANSLATIONS = {
   ro: {
     "DCAM could not start": "DCAM nu a putut porni",
+    "Help Centre": "Centru de ajutor",
     "The browser blocked part of the application startup.": "Browserul a blocat o parte din pornirea aplicatiei.",
     "Checking DCAM session...": "Se verifica sesiunea DCAM...",
     "v22 Job Sign-Off Foundation": "v23 Setari si limba",
@@ -1480,12 +1483,15 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
   );
 
   useEffect(() => {
+    if (activePage === "Help Centre") {
+      return;
+    }
     if (!visibleNavItems.some((item) => item.label === activePage)) {
       setActivePage(visibleNavItems[0]?.label || "Dashboard");
     }
   }, [activePage, visibleNavItems]);
 
-  const pageTitle = activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Quotes & Contracts" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Defects" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
+  const pageTitle = activePage === "Help Centre" || activePage === "Customers" || activePage === "Contacts" || activePage === "Pipeline" || activePage === "Quotes & Contracts" || activePage === "Buildings" || activePage === "Assets" || activePage === "Work Orders" || activePage === "Service Desk" || activePage === "Defects" || activePage === "Schedule" || activePage === "Maintenance Plans" || activePage === "Compliance Services" || activePage === "Forms Builder" || activePage === "Reports" || activePage === "Certificates" || activePage === "Customer Portal" || activePage === "My Jobs" || activePage === "People" || activePage === "Asset Settings" || activePage === "Settings" || activePage === "Users & Access"
     ? activePage
     : "DCAM Operating System";
 
@@ -1554,12 +1560,16 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v45 Quotes & Contracts</p>
+            <p className="eyebrow">v46 Bilingual Help Centre</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
 
           <div className="topbar-actions">
+            <button className={`help-top-button ${activePage === "Help Centre" ? "active" : ""}`} onClick={() => selectPage("Help Centre")} title="Help Centre">
+              <CircleHelp size={19} />
+              <span>Help Centre</span>
+            </button>
             <GlobalSearch user={user} onNavigate={selectPage} />
             <AlertsCentre user={user} onNavigate={selectPage} />
             <div className="user-panel">
@@ -1575,6 +1585,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
           </div>
         </header>
 
+        {activePage === "Help Centre" ? <HelpCenter language={language} user={user} /> : null}
         {activePage === "Customers" ? <CustomersPage user={user} language={language} /> : null}
         {activePage === "Contacts" ? <ContactsPage user={user} /> : null}
         {activePage === "Pipeline" ? <PipelinePage user={user} /> : null}
@@ -1604,7 +1615,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
           />
         ) : null}
         {activePage === "Users & Access" ? <UsersAccessPage currentUser={user} /> : null}
-        {activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Quotes & Contracts" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Defects" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
+        {activePage !== "Help Centre" && activePage !== "Customers" && activePage !== "Contacts" && activePage !== "Pipeline" && activePage !== "Quotes & Contracts" && activePage !== "Buildings" && activePage !== "Assets" && activePage !== "Work Orders" && activePage !== "Service Desk" && activePage !== "Defects" && activePage !== "Schedule" && activePage !== "Maintenance Plans" && activePage !== "Compliance Services" && activePage !== "Forms Builder" && activePage !== "Reports" && activePage !== "Certificates" && activePage !== "Customer Portal" && activePage !== "My Jobs" && activePage !== "People" && activePage !== "Asset Settings" && activePage !== "Settings" && activePage !== "Users & Access" ? <DashboardPage user={user} /> : null}
       </main>
     </div>
   );

@@ -1,0 +1,256 @@
+.help-centre-page {
+  display: grid;
+  gap: 18px;
+}
+
+.help-top-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cedbea;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: white;
+  color: #30475f;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.help-top-button:hover,
+.help-top-button.active {
+  border-color: #0f5ea8;
+  background: #eaf4fd;
+  color: #0f5ea8;
+}
+
+.help-hero {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 26px;
+  border: 1px solid #d9e6f5;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #edf6ff 100%);
+}
+
+.help-hero h2 {
+  margin-bottom: 8px;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+}
+
+.help-hero p:last-child {
+  max-width: 760px;
+  margin-bottom: 0;
+  color: #52657a;
+  line-height: 1.65;
+}
+
+.help-hero-icon {
+  display: grid;
+  flex: 0 0 68px;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border-radius: 22px;
+  background: #0f5ea8;
+  color: white;
+  box-shadow: 0 12px 28px rgba(15, 94, 168, 0.2);
+}
+
+.help-notes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.help-notes p {
+  margin: 0;
+  padding: 13px 15px;
+  border-left: 4px solid #2f80c9;
+  border-radius: 10px;
+  background: #f1f7fd;
+  color: #40546a;
+  line-height: 1.5;
+}
+
+.help-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border: 1px solid #cfdbe8;
+  border-radius: 14px;
+  background: white;
+  color: #60758b;
+}
+
+.help-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 15px 0;
+  background: transparent;
+  font-size: 1rem;
+}
+
+.help-categories {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.help-categories button {
+  border: 1px solid #ced9e5;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: white;
+  color: #465b70;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.help-categories button.active {
+  border-color: #0f5ea8;
+  background: #0f5ea8;
+  color: white;
+}
+
+.help-articles {
+  display: grid;
+  gap: 11px;
+}
+
+.help-article {
+  overflow: hidden;
+  border: 1px solid #d9e2ec;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(31, 53, 76, 0.04);
+}
+
+.help-article.open {
+  border-color: #97bde1;
+  box-shadow: 0 10px 28px rgba(31, 95, 153, 0.08);
+}
+
+.help-article-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  padding: 17px;
+  background: transparent;
+  color: #172b3f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.help-article-heading strong,
+.help-article-heading small {
+  display: block;
+}
+
+.help-article-heading strong {
+  margin-bottom: 4px;
+  font-size: 1.02rem;
+}
+
+.help-article-heading small {
+  color: #64778a;
+  line-height: 1.45;
+}
+
+.help-book {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: #e8f2fb;
+  color: #0f5ea8;
+}
+
+.help-open-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #0f5ea8;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.help-article.open .help-open-label svg {
+  transform: rotate(180deg);
+}
+
+.help-article-content {
+  padding: 0 22px 22px 70px;
+  border-top: 1px solid #edf1f5;
+}
+
+.help-article-content h3 {
+  margin: 20px 0 12px;
+}
+
+.help-article-content ol {
+  display: grid;
+  gap: 11px;
+  padding-left: 23px;
+  line-height: 1.55;
+}
+
+.help-article-content li::marker {
+  color: #0f5ea8;
+  font-weight: 900;
+}
+
+.help-tip {
+  margin-top: 17px;
+  padding: 14px 16px;
+  border-radius: 13px;
+  background: #fff8dc;
+  color: #594812;
+}
+
+.help-tip p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .help-top-button span {
+    display: none;
+  }
+  .help-hero {
+    align-items: flex-start;
+    padding: 20px;
+  }
+
+  .help-notes {
+    grid-template-columns: 1fr;
+  }
+
+  .help-open-label {
+    font-size: 0;
+  }
+
+  .help-article-content {
+    padding: 0 17px 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .help-hero-icon {
+    display: none;
+  }
+
+  .help-article-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .help-book {
+    display: none;
+  }
+}
