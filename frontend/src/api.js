@@ -144,6 +144,35 @@ export async function updateCustomer(id, payload) {
   });
 }
 
+export async function getCustomerOverview(id) {
+  return apiRequest(`/api/customers/${id}/overview`);
+}
+
+export async function updateCustomerAccount(id, payload) {
+  return apiRequest(`/api/customers/${id}/account`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function createCustomerActivity(id, payload) {
+  return apiRequest(`/api/customers/${id}/activities`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function uploadCustomerDocument(id, payload) {
+  return apiRequest(`/api/customers/${id}/documents`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function downloadCustomerDocument(id, documentId) {
+  return apiBlobRequest(`/api/customers/${id}/documents/${documentId}/download`);
+}
+
 export async function getContactSummary() {
   return apiRequest("/api/contacts/summary");
 }

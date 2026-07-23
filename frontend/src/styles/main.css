@@ -1117,6 +1117,138 @@ h1 {
   }
 }
 
+/* Customer 360 */
+.customer-360-modal {
+  width: min(1180px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.customer-360-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.customer-360-stats .mini-card {
+  min-height: 92px;
+}
+
+.customer-360-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.customer-360-grid .detail-panel {
+  min-width: 0;
+}
+
+.compact-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.customer-360-list {
+  display: grid;
+  gap: 9px;
+  max-height: 315px;
+  overflow-y: auto;
+}
+
+.customer-360-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.customer-360-list-row > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.customer-360-list-row span {
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-activity-panel {
+  grid-column: 1 / -1;
+}
+
+.activity-compose {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 15px;
+}
+
+.activity-compose textarea {
+  grid-column: 1 / 3;
+}
+
+.customer-activity-list {
+  max-height: 330px;
+  overflow-y: auto;
+}
+
+.document-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.document-upload-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .customer-360-stats {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .customer-360-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-activity-panel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .customer-360-modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+  }
+
+  .customer-360-stats,
+  .compact-form-grid,
+  .customer-360-list-row,
+  .activity-compose {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-compose textarea {
+    grid-column: auto;
+  }
+
+  .document-upload-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .page-intro {
   background: linear-gradient(135deg, #ffffff, #dbeafe);
   border: 1px solid rgba(37, 99, 235, 0.16);

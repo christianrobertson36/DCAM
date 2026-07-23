@@ -30,6 +30,7 @@ import {
   createComplianceService,
   createContact,
   createCustomer,
+  createCustomerActivity,
   createDefect,
   createFormTemplate,
   createMaintenancePlan,
@@ -46,6 +47,7 @@ import {
   deleteSampleData,
   downloadAssetFile,
   downloadDefectFile,
+  downloadCustomerDocument,
   exportReport,
   exportCertificate,
   downloadTechnicianJobFile,
@@ -58,6 +60,7 @@ import {
   getContactSummary,
   getCustomerPortalDashboard,
   getCustomerSummary,
+  getCustomerOverview,
   getDefectSummary,
   getFormTemplateSummary,
   getMaintenancePlanSummary,
@@ -121,6 +124,7 @@ import {
   uploadAssetFile,
   updateBuilding,
   updateCustomer,
+  updateCustomerAccount,
   updateDefect,
   updateMaintenancePlan,
   updatePipelineOpportunity,
@@ -132,6 +136,7 @@ import {
   uploadTechnicianJobFile,
   uploadServiceRequestFile,
   uploadDefectFile,
+  uploadCustomerDocument,
   uploadBrandingAsset,
   updateBranding,
   resetAdminUserPassword,
@@ -557,7 +562,6 @@ const TRANSLATIONS = {
     "Your compliance workspace": "Spatiul dvs. de conformitate",
     "View your sites, assets, open work, reports and certificates in one controlled portal.": "Vedeti site-urile, activele, lucrarile deschise, rapoartele si certificatele intr-un portal controlat.",
     "Linked Customers": "Clienti asociati",
-    "Open Work": "Lucrari deschise",
     "Portal access is not linked to a customer record yet.": "Accesul portalului nu este asociat inca unui client.",
     "Contact your DCAM administrator to link this login to your company.": "Contactati administratorul DCAM pentru a asocia acest login cu compania dvs.",
     "Your Sites": "Site-urile dvs.",
@@ -688,6 +692,39 @@ const TRANSLATIONS = {
     "Save Request": "Salveaza solicitarea",
     "Customer Visible": "Vizibil clientului",
     "Internal": "Intern",
+    "v44 Customer 360": "v44 Vedere completa client",
+    "360 View": "Vedere 360",
+    "Customer 360": "Client 360",
+    "One view of the relationship, estate, operations, compliance and communication history.": "O singura vedere asupra relatiei, locatiilor, operatiunilor, conformitatii si istoricului comunicarilor.",
+    "Loading customer overview...": "Se incarca vederea completa a clientului...",
+    "Account Management": "Management cont",
+    "Account owner": "Responsabil cont",
+    "Account risk": "Risc cont",
+    "Billing contact name": "Nume contact facturare",
+    "Billing contact email": "Email contact facturare",
+    "Billing contact phone": "Telefon contact facturare",
+    "Save Account Details": "Salveaza detalii cont",
+    "Open Work": "Lucrari deschise",
+    "Requests": "Solicitari",
+    "Opportunities": "Oportunitati",
+    "Documents": "Documente",
+    "No contacts recorded.": "Nu exista contacte inregistrate.",
+    "Activity Timeline": "Cronologie activitate",
+    "Activity subject...": "Subiect activitate...",
+    "Details and next steps...": "Detalii si pasii urmatori...",
+    "Add Activity": "Adauga activitate",
+    "No customer activity recorded.": "Nu exista activitate inregistrata pentru client.",
+    "Customer Documents": "Documente client",
+    "Upload Document": "Incarca document",
+    "No customer documents uploaded.": "Nu exista documente incarcate pentru client.",
+    "Note": "Nota",
+    "Call": "Apel",
+    "Meeting": "Sedinta",
+    "Review": "Revizuire",
+    "Contract": "Contract",
+    "Insurance": "Asigurare",
+    "Site Information": "Informatii locatie",
+    "Commercial": "Comercial",
     "Defects & Corrective Actions": "Defecte si actiuni corective",
     "v43 Defects & Corrective Actions": "v43 Defecte si actiuni corective",
     "Control risk through verified remediation": "Controlati riscul prin remediere verificata",
@@ -1465,7 +1502,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v43 Defects & Corrective Actions</p>
+            <p className="eyebrow">v44 Customer 360</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1486,7 +1523,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
           </div>
         </header>
 
-        {activePage === "Customers" ? <CustomersPage user={user} /> : null}
+        {activePage === "Customers" ? <CustomersPage user={user} language={language} /> : null}
         {activePage === "Contacts" ? <ContactsPage user={user} /> : null}
         {activePage === "Pipeline" ? <PipelinePage user={user} /> : null}
         {activePage === "Buildings" ? <BuildingsPage user={user} /> : null}
@@ -2366,7 +2403,7 @@ function PortalList({ title, rows, emptyText, renderRow }) {
   );
 }
 
-function CustomersPage({ user }) {
+function CustomersPage({ user, language }) {
   const [customers, setCustomers] = useState([]);
   const [summary, setSummary] = useState({
     total: 0,
@@ -2380,10 +2417,36 @@ function CustomersPage({ user }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [form, setForm] = useState(emptyCustomer);
+  const [overviewCustomer, setOverviewCustomer] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [staffUsers, setStaffUsers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const canCreateCustomer = hasPermission(user, PERMISSIONS.CUSTOMERS_CREATE);
   const canEditCustomer = hasPermission(user, PERMISSIONS.CUSTOMERS_EDIT);
+
+  async function openOverview(customer) {
+    setOverviewCustomer(customer);
+    setOverview(null);
+    setError("");
+    try {
+      const [data, staffData] = await Promise.all([
+        getCustomerOverview(customer.id),
+        canEditCustomer && hasPermission(user, PERMISSIONS.STAFF_VIEW)
+          ? listStaffUsers()
+          : Promise.resolve({ users: [] })
+      ]);
+      setOverview(data);
+      setStaffUsers(staffData.users || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function refreshOverview() {
+    if (!overviewCustomer) return;
+    setOverview(await getCustomerOverview(overviewCustomer.id));
+  }
 
   async function loadCustomers() {
     const [summaryData, customersData] = await Promise.all([
@@ -2556,6 +2619,9 @@ function CustomersPage({ user }) {
                   </span>
                 </div>
                 <div className="row-actions">
+                  <button className="secondary-button" type="button" onClick={() => openOverview(customer)}>
+                    360 View
+                  </button>
                   {canEditCustomer ? (
                     <button className="secondary-button" type="button" onClick={() => openEditForm(customer)}>
                       Edit
@@ -2651,6 +2717,200 @@ function CustomersPage({ user }) {
           </form>
         </div>
       ) : null}
+      {overviewCustomer ? (
+        <CustomerOverviewModal
+          customer={overviewCustomer}
+          overview={overview}
+          language={language}
+          staffUsers={staffUsers}
+          canEdit={canEditCustomer}
+          busy={busy}
+          setBusy={setBusy}
+          setError={setError}
+          onRefresh={refreshOverview}
+          onClose={() => {
+            setOverviewCustomer(null);
+            setOverview(null);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function CustomerOverviewModal({
+  customer,
+  overview,
+  language,
+  staffUsers,
+  canEdit,
+  busy,
+  setBusy,
+  onRefresh,
+  onClose
+}) {
+  const tr = (value) => translateText(value, language);
+  const [account, setAccount] = useState({});
+  const [activity, setActivity] = useState({ activity_type: "Note", subject: "", details: "" });
+  const [documentType, setDocumentType] = useState("General");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setAccount(overview?.account || {});
+  }, [overview]);
+
+  async function saveAccount() {
+    setBusy(true);
+    setError("");
+    try {
+      await updateCustomerAccount(customer.id, {
+        ...account,
+        account_owner_id: account.account_owner_id ? Number(account.account_owner_id) : null
+      });
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addActivity() {
+    if (!activity.subject.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await createCustomerActivity(customer.id, activity);
+      setActivity({ activity_type: "Note", subject: "", details: "" });
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadDocument(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      await uploadCustomerDocument(customer.id, {
+        filename: file.name,
+        content_type: file.type,
+        data: await fileToBase64(file),
+        document_type: documentType
+      });
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadDocument(document) {
+    setError("");
+    try {
+      const blob = await downloadCustomerDocument(customer.id, document.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = document.original_filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const stats = overview?.summary || {};
+
+  return (
+    <div className="modal-backdrop">
+      <section className="customer-form customer-360-modal">
+        <div className="form-header">
+          <div>
+            <p className="eyebrow">Customer 360</p>
+            <h2>{customer.company_name}</h2>
+            <p>One view of the relationship, estate, operations, compliance and communication history.</p>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {error ? <div className="login-error">{error}</div> : null}
+        {!overview ? <div className="empty-state">Loading customer overview...</div> : (
+          <>
+            <section className="customer-360-stats">
+              {[
+                ["Contacts", stats.contacts],
+                ["Buildings", stats.buildings],
+                ["Assets", stats.assets],
+                ["Open Work", stats.open_work_orders],
+                ["Requests", stats.open_requests],
+                ["Defects", stats.open_defects],
+                ["Opportunities", stats.open_opportunities],
+                ["Documents", Number(stats.reports || 0) + Number(stats.certificates || 0)]
+              ].map(([label, value]) => <article className="mini-card" key={label}><span>{label}</span><strong>{value || 0}</strong></article>)}
+            </section>
+
+            <div className="customer-360-grid">
+              <section className="detail-panel">
+                <div className="table-header"><strong>Account Management</strong><span>{account.account_risk || "Normal"} risk</span></div>
+                <div className="form-grid compact-form-grid">
+                  <label>Account owner<select value={account.account_owner_id || ""} onChange={(event) => setAccount((current) => ({ ...current, account_owner_id: event.target.value }))} disabled={!canEdit}><option value="">{tr("Unassigned")}</option>{staffUsers.map((staff) => <option value={staff.id} key={staff.id}>{staff.name} · {staff.role}</option>)}</select></label>
+                  <label>Account risk<select value={account.account_risk || "Normal"} onChange={(event) => setAccount((current) => ({ ...current, account_risk: event.target.value }))} disabled={!canEdit}>{["Low", "Normal", "High", "Critical"].map((risk) => <option value={risk} key={risk}>{tr(risk)}</option>)}</select></label>
+                  <Field label="Billing contact name" value={account.billing_contact_name} onChange={(value) => setAccount((current) => ({ ...current, billing_contact_name: value }))} disabled={!canEdit} />
+                  <Field label="Billing contact email" value={account.billing_contact_email} onChange={(value) => setAccount((current) => ({ ...current, billing_contact_email: value }))} type="email" disabled={!canEdit} />
+                  <Field label="Billing contact phone" value={account.billing_contact_phone} onChange={(value) => setAccount((current) => ({ ...current, billing_contact_phone: value }))} disabled={!canEdit} />
+                </div>
+                {canEdit ? <button className="secondary-button" type="button" onClick={saveAccount} disabled={busy}><Save size={16} />Save Account Details</button> : null}
+              </section>
+
+              <section className="detail-panel">
+                <div className="table-header"><strong>Contacts</strong><span>{overview.contacts?.length || 0}</span></div>
+                <div className="customer-360-list">
+                  {(overview.contacts || []).map((contact) => (
+                    <div className="customer-360-list-row" key={contact.id}>
+                      <div><strong>{contact.first_name} {contact.last_name || ""}</strong><span>{contact.job_title || contact.contact_type}</span></div>
+                      <div><span>{contact.email || "No email"}</span><span>{contact.phone || contact.mobile || "No phone"}</span></div>
+                    </div>
+                  ))}
+                  {!overview.contacts?.length ? <div className="empty-state">No contacts recorded.</div> : null}
+                </div>
+              </section>
+
+              <section className="detail-panel customer-activity-panel">
+                <div className="table-header"><strong>Activity Timeline</strong><span>{overview.activities?.length || 0}</span></div>
+                {canEdit ? <div className="activity-compose">
+                  <select value={activity.activity_type} onChange={(event) => setActivity((current) => ({ ...current, activity_type: event.target.value }))}>{["Note", "Call", "Email", "Meeting", "Review"].map((type) => <option value={type} key={type}>{tr(type)}</option>)}</select>
+                  <input value={activity.subject} onChange={(event) => setActivity((current) => ({ ...current, subject: event.target.value }))} placeholder="Activity subject..." />
+                  <textarea value={activity.details} onChange={(event) => setActivity((current) => ({ ...current, details: event.target.value }))} rows={2} placeholder="Details and next steps..." />
+                  <button className="secondary-button" type="button" onClick={addActivity} disabled={busy || !activity.subject.trim()}><Plus size={16} />Add Activity</button>
+                </div> : null}
+                <div className="request-timeline customer-activity-list">
+                  {(overview.activities || []).map((item) => <div className="timeline-entry" key={item.id}><strong>{item.subject}</strong><span>{item.activity_type} · {item.created_by_name || "DCAM"} · {formatDateTimeForDisplay(item.occurred_at)}</span>{item.details ? <p>{item.details}</p> : null}</div>)}
+                  {!overview.activities?.length ? <div className="empty-state">No customer activity recorded.</div> : null}
+                </div>
+              </section>
+
+              <section className="detail-panel">
+                <div className="table-header"><strong>Customer Documents</strong><span>{overview.documents?.length || 0}</span></div>
+                {canEdit ? <div className="document-upload-row">
+                  <select value={documentType} onChange={(event) => setDocumentType(event.target.value)}>{["General", "Contract", "Insurance", "Site Information", "Commercial"].map((type) => <option value={type} key={type}>{tr(type)}</option>)}</select>
+                  <label className="secondary-button file-upload-button"><Plus size={16} />Upload Document<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={uploadDocument} hidden /></label>
+                </div> : null}
+                <div className="request-file-list">
+                  {(overview.documents || []).map((document) => <button className="request-file" type="button" key={document.id} onClick={() => downloadDocument(document)}><Download size={16} /><span>{document.original_filename}</span><small>{document.document_type} · {formatDateForDisplay(document.created_at)}</small></button>)}
+                  {!overview.documents?.length ? <div className="empty-state">No customer documents uploaded.</div> : null}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }
