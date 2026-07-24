@@ -207,6 +207,7 @@ const TRANSLATIONS = {
     "v33 Contacts": "v33 Contacte",
     "v34 Pipeline": "v34 Pipeline",
     "v50 Sample Data Currency and SQL Fix": "v50 Remediere moneda si SQL pentru date exemplu",
+    "v51 Sample Commercial Relationship Fix": "v51 Remediere legaturi comerciale pentru date exemplu",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -1598,7 +1599,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v50 Sample Data Currency and SQL Fix</p>
+            <p className="eyebrow">v51 Sample Commercial Relationship Fix</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>

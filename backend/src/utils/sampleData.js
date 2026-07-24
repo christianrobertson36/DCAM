@@ -95,6 +95,7 @@ function indexBy(rows, field) {
 
 async function createSampleData(client, userId, requestedCurrency = "GBP") {
   const currency = requestedCurrency === "RON" ? "RON" : "GBP";
+  const taxRate = currency === "RON" ? 19 : 20;
   const created = Object.fromEntries(COUNT_TABLES.map(([, key]) => [key, 0]));
   await deleteLegacySampleData(client);
 
@@ -489,10 +490,10 @@ async function createSampleData(client, userId, requestedCurrency = "GBP") {
       valid_until, notes, subtotal, tax_rate, tax_total, total, accepted_at,
       created_by, updated_by, sample_data_key
     ) VALUES
-      ('SAMPLE-Q-001', $1, $4, $7, 'Annual fire door and PAT compliance programme', 'Sent', '${currency}', CURRENT_DATE + 25, 'Includes both Orizont sites; final quantities subject to survey.', 40756.30, 19, 7743.70, 48500.00, NULL, $10, $10, $11),
-      ('SAMPLE-Q-002', $2, $5, $8, 'Carpathia multi-site PPM renewal', 'Draft', '${currency}', CURRENT_DATE + 30, 'Renewal pricing for quarterly PPM and annual compliance inspections.', 105882.35, 19, 20117.65, 126000.00, NULL, $10, $10, $11),
-      ('SAMPLE-Q-003', $3, $6, $9, 'Urgent kitchen fire damper remedial works', 'Accepted', '${currency}', CURRENT_DATE + 7, 'Includes replacement actuator, access and repeat drop test.', 10756.30, 19, 2043.70, 12800.00, NOW() - INTERVAL '1 day', $10, $10, $11),
-      ('SAMPLE-Q-004', $4, NULL, $12, 'LV switchboard controlled shutdown repair', 'Sent', '${currency}', CURRENT_DATE + 10, 'Weekend shutdown, torque remediation and verification thermography.', 18487.39, 19, 3512.61, 22000.00, NULL, $10, $10, $11)
+      ('SAMPLE-Q-001', $1, $5, $8, 'Annual fire door and PAT compliance programme', 'Sent', '${currency}', CURRENT_DATE + 25, 'Includes both Orizont sites; final quantities subject to survey.', 40756.30, ${taxRate}, ROUND(40756.30 * ${taxRate} / 100, 2), ROUND(40756.30 * (1 + ${taxRate} / 100.0), 2), NULL, $11, $11, $12),
+      ('SAMPLE-Q-002', $2, $6, $9, 'Carpathia multi-site PPM renewal', 'Draft', '${currency}', CURRENT_DATE + 30, 'Renewal pricing for quarterly PPM and annual compliance inspections.', 105882.35, ${taxRate}, ROUND(105882.35 * ${taxRate} / 100, 2), ROUND(105882.35 * (1 + ${taxRate} / 100.0), 2), NULL, $11, $11, $12),
+      ('SAMPLE-Q-003', $3, $7, $10, 'Urgent kitchen fire damper remedial works', 'Accepted', '${currency}', CURRENT_DATE + 7, 'Includes replacement actuator, access and repeat drop test.', 10756.30, ${taxRate}, ROUND(10756.30 * ${taxRate} / 100, 2), ROUND(10756.30 * (1 + ${taxRate} / 100.0), 2), NOW() - INTERVAL '1 day', $11, $11, $12),
+      ('SAMPLE-Q-004', $4, NULL, $13, 'LV switchboard controlled shutdown repair', 'Sent', '${currency}', CURRENT_DATE + 10, 'Weekend shutdown, torque remediation and verification thermography.', 18487.39, ${taxRate}, ROUND(18487.39 * ${taxRate} / 100, 2), ROUND(18487.39 * (1 + ${taxRate} / 100.0), 2), NULL, $11, $11, $12)
     RETURNING id, quotation_reference
     `,
     [
@@ -502,6 +503,7 @@ async function createSampleData(client, userId, requestedCurrency = "GBP") {
       customers["Transilvania Components SRL"].id,
       buildings["Orizont School Brasov"].id,
       buildings["Riverside Business Centre"].id,
+      buildings["Danube Grand Hotel"].id,
       opportunities["SAMPLE-OPP-001"].id,
       opportunities["SAMPLE-OPP-002"].id,
       opportunities["SAMPLE-OPP-003"].id,
