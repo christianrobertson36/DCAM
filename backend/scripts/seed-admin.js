@@ -14,9 +14,14 @@ async function seedAdmin() {
 
   await pool.query(
     `
-    INSERT INTO users (name, email, password_hash, role, status)
-    VALUES ($1, $2, $3, $4, 'active')
-    ON CONFLICT (email)
+    INSERT INTO users (
+      tenant_id, name, email, password_hash, role, status
+    )
+    VALUES (
+      '00000000-0000-4000-8000-000000000001',
+      $1, $2, $3, $4, 'active'
+    )
+    ON CONFLICT (tenant_id, (LOWER(email)))
     DO UPDATE SET
       name = EXCLUDED.name,
       password_hash = EXCLUDED.password_hash,

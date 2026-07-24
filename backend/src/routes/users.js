@@ -25,6 +25,7 @@ function publicAdminUser(row) {
     email: row.email,
     role: row.role,
     status: row.status,
+    tenant_id: row.tenant_id,
     permissions: getPermissionsForRole(row.role),
     last_login_at: row.last_login_at,
     created_at: row.created_at,
@@ -32,17 +33,17 @@ function publicAdminUser(row) {
   };
 }
 
-async function countActiveSuperAdmins(pool, excludedId = null) {
-  const values = [ROLES.SUPER_ADMIN];
+async function countActiveSuperAdmins(pool, tenantId, excludedId = null) {
+  const values = [ROLES.SUPER_ADMIN, tenantId];
   let excludedSql = "";
 
   if (excludedId) {
     values.push(excludedId);
-    excludedSql = "AND id <> $2";
+    excludedSql = "AND id <> $3";
   }
 
   const result = await pool.query(
-    `SELECT COUNT(*)::INT AS count FROM users WHERE role = $1 AND status = 'active' ${excludedSql}`,
+    `SELECT COUNT(*)::INT AS count FROM users WHERE tenant_id = $2 AND role = $1 AND status = 'active' ${excludedSql}`,
     values
   );
 
@@ -66,7 +67,8 @@ router.get("/", requirePermission(PERMISSIONS.USERS_VIEW), async (req, res, next
     const role = cleanText(req.query.role);
     const status = cleanText(req.query.status);
     const values = [];
-    const where = [];
+    const where = ["tenant_id = $1"];
+    values.push(req.user.tenant_id);
 
     if (search) {
       values.push(`%${search}%`);
@@ -85,7 +87,7 @@ router.get("/", requirePermission(PERMISSIONS.USERS_VIEW), async (req, res, next
 
     const result = await pool.query(
       `
-      SELECT id, name, email, role, status, last_login_at, created_at, updated_at
+      SELECT id, name, email, role, status, tenant_id, last_login_at, created_at, updated_at
       FROM users
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY status ASC, name ASC, id ASC
@@ -114,11 +116,13 @@ router.get("/:id/audit", requirePermission(PERMISSIONS.USERS_VIEW), async (req, 
              actor.name AS actor_name, actor.email AS actor_email
       FROM audit_events ae
       LEFT JOIN users actor ON actor.id = ae.actor_user_id
-      WHERE ae.entity_type = 'user' AND ae.entity_id = $1
+      WHERE ae.tenant_id = $2
+        AND ae.entity_type = 'user'
+        AND ae.entity_id = $1
       ORDER BY ae.created_at DESC, ae.id DESC
       LIMIT 100
       `,
-      [id]
+      [id, req.user.tenant_id]
     );
 
     return res.json({ ok: true, events: result.rows });
@@ -151,11 +155,11 @@ router.post("/", requirePermission(PERMISSIONS.USERS_MANAGE), async (req, res, n
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await pool.query(
       `
-      INSERT INTO users (name, email, password_hash, role, status)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, email, role, status, last_login_at, created_at, updated_at
+      INSERT INTO users (tenant_id, name, email, password_hash, role, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, name, email, role, status, tenant_id, last_login_at, created_at, updated_at
       `,
-      [name, email, passwordHash, role, status]
+      [req.user.tenant_id, name, email, passwordHash, role, status]
     );
 
     await writeAuditEvent(pool, {
@@ -194,8 +198,8 @@ router.patch("/:id", requirePermission(PERMISSIONS.USERS_MANAGE), async (req, re
     }
 
     const existingResult = await pool.query(
-      "SELECT id, name, email, role, status FROM users WHERE id = $1 LIMIT 1",
-      [id]
+      "SELECT id, name, email, role, status FROM users WHERE id = $1 AND tenant_id = $2 LIMIT 1",
+      [id, req.user.tenant_id]
     );
     const existing = existingResult.rows[0];
 
@@ -206,7 +210,7 @@ router.patch("/:id", requirePermission(PERMISSIONS.USERS_MANAGE), async (req, re
     const removesActiveSuperAdmin = existing.role === ROLES.SUPER_ADMIN && existing.status === "active" &&
       (role !== ROLES.SUPER_ADMIN || status !== "active");
 
-    if (removesActiveSuperAdmin && await countActiveSuperAdmins(pool, id) < 1) {
+    if (removesActiveSuperAdmin && await countActiveSuperAdmins(pool, req.user.tenant_id, id) < 1) {
       return res.status(409).json({ ok: false, error: "DCAM must retain at least one active Super Administrator" });
     }
 
@@ -218,10 +222,10 @@ router.patch("/:id", requirePermission(PERMISSIONS.USERS_MANAGE), async (req, re
       `
       UPDATE users
       SET name = $1, email = $2, role = $3, status = $4, updated_at = NOW()
-      WHERE id = $5
-      RETURNING id, name, email, role, status, last_login_at, created_at, updated_at
+      WHERE id = $5 AND tenant_id = $6
+      RETURNING id, name, email, role, status, tenant_id, last_login_at, created_at, updated_at
       `,
-      [name, email, role, status, id]
+      [name, email, role, status, id, req.user.tenant_id]
     );
 
     await writeAuditEvent(pool, {
@@ -258,8 +262,8 @@ router.post("/:id/reset-password", requirePermission(PERMISSIONS.USERS_MANAGE), 
 
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING id",
-      [passwordHash, id]
+      "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING id",
+      [passwordHash, id, req.user.tenant_id]
     );
 
     if (!result.rows[0]) {

@@ -65,10 +65,10 @@ export async function apiBlobRequest(path, options = {}) {
   return response.blob();
 }
 
-export async function login(email, password) {
+export async function login(email, password, tenant = "") {
   return apiRequest("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password, tenant })
   });
 }
 
@@ -82,6 +82,17 @@ export async function getMicrosoftSsoStatus() {
 
 export function microsoftLoginUrl() {
   return `${API_URL}/auth/microsoft`;
+}
+
+export async function getTenant() {
+  return apiRequest("/api/tenant");
+}
+
+export async function updateTenant(payload) {
+  return apiRequest("/api/tenant", {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function getBranding() {

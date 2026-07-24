@@ -18,17 +18,19 @@ async function authRequired(req, res, next) {
     const pool = getPool();
     const result = await pool.query(
       `
-      SELECT id, name, email, role, status, created_at, updated_at
-      FROM users
-      WHERE id = $1
+      SELECT u.id, u.name, u.email, u.role, u.status, u.tenant_id,
+             t.name AS tenant_name, t.slug AS tenant_slug, t.status AS tenant_status
+      FROM users u
+      JOIN tenants t ON t.id = u.tenant_id
+      WHERE u.id = $1 AND u.tenant_id = $2
       LIMIT 1
       `,
-      [payload.sub]
+      [payload.sub, payload.tenant_id]
     );
 
     const user = result.rows[0];
 
-    if (!user || user.status !== "active") {
+    if (!user || user.status !== "active" || user.tenant_status !== "active") {
       return res.status(401).json({
         ok: false,
         error: "User not found or inactive"
@@ -41,7 +43,10 @@ async function authRequired(req, res, next) {
       name: user.name,
       email: user.email,
       role: user.role,
-      status: user.status
+      status: user.status,
+      tenant_id: user.tenant_id,
+      tenant_name: user.tenant_name,
+      tenant_slug: user.tenant_slug
     };
 
     return next();

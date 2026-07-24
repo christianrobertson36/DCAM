@@ -14,18 +14,54 @@ env:
   REGISTRY: ghcr.io
   API_IMAGE: ghcr.io/christianrobertson36/dcam-api
   WEB_IMAGE: ghcr.io/christianrobertson36/dcam-web
-  API_TAG: v53
-  WEB_TAG: v53
+  API_TAG: v54
+  WEB_TAG: v54
   PUBLIC_API_URL: https://dcam.ctec-shop.co.uk
 
 jobs:
   build-api:
-    name: Build API v53
+    name: Build API v54
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: dcam_test
+          POSTGRES_USER: dcam
+          POSTGRES_PASSWORD: dcam_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dcam -d dcam_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate full database migration chain
+        env:
+          PGPASSWORD: dcam_test_password
+        run: |
+          for migration in database/migrations/*.sql; do
+            echo "Applying $migration"
+            psql -h 127.0.0.1 -U dcam -d dcam_test -v ON_ERROR_STOP=1 -f "$migration"
+          done
+          psql -h 127.0.0.1 -U dcam -d dcam_test -v ON_ERROR_STOP=1 -c "
+            SELECT id, name, slug FROM tenants;
+            SELECT COUNT(*) AS users_without_tenant FROM users WHERE tenant_id IS NULL;
+            SELECT COUNT(*) AS audit_events_without_tenant FROM audit_events WHERE tenant_id IS NULL;
+          "
+
+      - name: Validate tenant-aware admin seed
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://dcam:dcam_test_password@127.0.0.1:5432/dcam_test
+        run: |
+          npm ci
+          npm run seed:admin
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -46,7 +82,7 @@ jobs:
           tags: ${{ env.API_IMAGE }}:${{ env.API_TAG }}
 
   build-web:
-    name: Build Web v53
+    name: Build Web v54
     runs-on: ubuntu-latest
 
     steps:

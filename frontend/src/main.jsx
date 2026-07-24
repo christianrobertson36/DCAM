@@ -72,6 +72,7 @@ import {
   getMaintenancePlanSummary,
   getMe,
   getMicrosoftSsoStatus,
+  getTenant,
   getPipelineSummary,
   getCommercialSummary,
   getQuotation,
@@ -155,6 +156,7 @@ import {
   uploadCustomerDocument,
   uploadBrandingAsset,
   updateBranding,
+  updateTenant,
   resetAdminUserPassword,
   verifyDefect
 } from "./api";
@@ -212,6 +214,18 @@ const TRANSLATIONS = {
     "v51 Sample Commercial Relationship Fix": "v51 Remediere legaturi comerciale pentru date exemplu",
     "v52 Microsoft SSO Foundation": "v52 Fundament autentificare Microsoft",
     "v53 Professional Login Experience": "v53 Experienta profesionala de autentificare",
+    "v54 SaaS Tenant Identity Foundation": "v54 Fundament identitate companie SaaS",
+    "Company account": "Cont companie",
+    "Company account (only needed when requested)": "Cont companie (necesar doar cand este solicitat)",
+    "Your company workspace": "Spatiul de lucru al companiei",
+    "Company account identity": "Identitatea contului companiei",
+    "This permanent identity separates users and future company data boundaries.": "Aceasta identitate permanenta separa utilizatorii si viitoarele limite ale datelor companiei.",
+    "Account reference": "Referinta contului",
+    "Default language": "Limba implicita",
+    "Default currency": "Moneda implicita",
+    "Timezone": "Fus orar",
+    "Company settings saved.": "Setarile companiei au fost salvate.",
+    "Save Company": "Salveaza compania",
     "Secure access to compliance operations": "Acces securizat la operatiunile de conformitate",
     "One secure workspace for compliance, assets and field operations.": "Un spatiu de lucru securizat pentru conformitate, active si operatiuni pe teren.",
     "Protected company access": "Acces protejat pentru companie",
@@ -1483,8 +1497,9 @@ const MICROSOFT_ERROR_MESSAGES = {
 };
 
 function LoginScreen({ branding, language, microsoftError, onLanguageChange, onLoginSuccess }) {
-  const [email, setEmail] = useState("admin@dcam.local");
-  const [password, setPassword] = useState("ChangeMe123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [tenantAccount, setTenantAccount] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [microsoftEnabled, setMicrosoftEnabled] = useState(false);
@@ -1507,7 +1522,7 @@ function LoginScreen({ branding, language, microsoftError, onLanguageChange, onL
     setBusy(true);
 
     try {
-      const data = await login(email, password);
+      const data = await login(email, password, tenantAccount);
       onLoginSuccess(data);
     } catch (err) {
       setError(err.message || "Login failed");
@@ -1560,6 +1575,16 @@ function LoginScreen({ branding, language, microsoftError, onLanguageChange, onL
         ) : null}
 
         <p className="local-login-label">Local account</p>
+        <label>
+          Company account (only needed when requested)
+          <input
+            value={tenantAccount}
+            onChange={(event) => setTenantAccount(event.target.value)}
+            type="text"
+            autoComplete="organization"
+            placeholder="company-reference"
+          />
+        </label>
         <label>
           Email
           <input
@@ -1690,7 +1715,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v53 Professional Login Experience</p>
+            <p className="eyebrow">v54 SaaS Tenant Identity Foundation</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1706,6 +1731,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
             <div>
               <strong>{user.name}</strong>
               <span>{user.role}</span>
+              {user.tenant?.name ? <small className="tenant-name">{user.tenant.name}</small> : null}
             </div>
             <button className="logout-button" onClick={onLogout}>
               <LogOut size={16} />
@@ -9730,11 +9756,21 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
   const [sampleBusy, setSampleBusy] = useState(false);
   const [sampleError, setSampleError] = useState("");
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [tenantForm, setTenantForm] = useState(null);
+  const [tenantBusy, setTenantBusy] = useState(false);
+  const [tenantError, setTenantError] = useState("");
+  const [tenantSaved, setTenantSaved] = useState(false);
   const canAdminSettings = hasPermission(user, PERMISSIONS.SETTINGS_ADMIN);
 
   useEffect(() => {
     setBrandForm({ ...DEFAULT_BRANDING, ...branding });
   }, [branding]);
+
+  useEffect(() => {
+    getTenant()
+      .then((data) => setTenantForm(data.tenant))
+      .catch((err) => setTenantError(err.message));
+  }, []);
 
   async function loadSampleStatus() {
     if (!canAdminSettings) {
@@ -9753,6 +9789,22 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
     event.preventDefault();
     safeSetStorageItem("dcam_language", language);
     setSaved(true);
+  }
+
+  async function saveTenant(event) {
+    event.preventDefault();
+    setTenantBusy(true);
+    setTenantError("");
+    setTenantSaved(false);
+    try {
+      const data = await updateTenant(tenantForm);
+      setTenantForm(data.tenant);
+      setTenantSaved(true);
+    } catch (err) {
+      setTenantError(err.message);
+    } finally {
+      setTenantBusy(false);
+    }
   }
 
   async function saveBranding(event) {
@@ -9852,6 +9904,50 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
           <p>Control how your organisation appears across DCAM while preserving secure platform defaults.</p>
         </div>
       </section>
+
+      {tenantForm ? (
+        <section className="table-card settings-card">
+          <div className="settings-tool-header">
+            <div>
+              <p className="eyebrow">Your company workspace</p>
+              <h3>Company account identity</h3>
+              <p>This permanent identity separates users and future company data boundaries.</p>
+            </div>
+            <span className="status-pill active">{tenantForm.status}</span>
+          </div>
+          <form className="customer-form settings-form" onSubmit={saveTenant}>
+            <div className="form-grid">
+              <Field label="Company name" value={tenantForm.name} onChange={(value) => setTenantForm((current) => ({ ...current, name: value }))} required disabled={!canAdminSettings} />
+              <label>
+                Account reference
+                <input value={tenantForm.slug || ""} readOnly />
+              </label>
+              <label>
+                Default language
+                <select value={tenantForm.default_language} disabled={!canAdminSettings} onChange={(event) => setTenantForm((current) => ({ ...current, default_language: event.target.value }))}>
+                  <option value="en">English</option>
+                  <option value="ro">Romanian</option>
+                </select>
+              </label>
+              <label>
+                Default currency
+                <select value={tenantForm.default_currency} disabled={!canAdminSettings} onChange={(event) => setTenantForm((current) => ({ ...current, default_currency: event.target.value }))}>
+                  <option value="GBP">GBP</option>
+                  <option value="RON">RON</option>
+                </select>
+              </label>
+              <Field label="Timezone" value={tenantForm.timezone} onChange={(value) => setTenantForm((current) => ({ ...current, timezone: value }))} required disabled={!canAdminSettings} />
+            </div>
+            {tenantError ? <div className="form-error">{tenantError}</div> : null}
+            {tenantSaved ? <div className="settings-success">Company settings saved.</div> : null}
+            {canAdminSettings ? (
+              <div className="form-actions">
+                <button className="primary-action" type="submit" disabled={tenantBusy}><Save size={18} />{tenantBusy ? "Saving..." : "Save Company"}</button>
+              </div>
+            ) : null}
+          </form>
+        </section>
+      ) : tenantError ? <div className="form-error">{tenantError}</div> : null}
 
       {canAdminSettings ? (
         <section className="table-card settings-card branding-settings-card">
