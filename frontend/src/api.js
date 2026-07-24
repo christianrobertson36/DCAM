@@ -76,6 +76,14 @@ export async function getMe() {
   return apiRequest("/auth/me");
 }
 
+export async function getMicrosoftSsoStatus() {
+  return apiRequest("/auth/microsoft/status");
+}
+
+export function microsoftLoginUrl() {
+  return `${API_URL}/auth/microsoft`;
+}
+
 export async function getBranding() {
   return apiRequest("/api/settings/branding");
 }

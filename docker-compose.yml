@@ -23,7 +23,7 @@
     build:
       context: .
       dockerfile: backend/Dockerfile
-    image: ghcr.io/christianrobertson36/dcam-api:v34
+    image: ghcr.io/christianrobertson36/dcam-api:v52
     container_name: dcam-api
     restart: unless-stopped
     environment:
@@ -31,6 +31,11 @@
       PORT: 5055
       DATABASE_URL: postgres://dcam:dcam_password@db:5432/dcam
       JWT_SECRET: local_dev_secret_change_later
+      MICROSOFT_CLIENT_ID: 262a87a9-8711-4376-b574-72ffa987346b
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_HOME_TENANT_ID: 30ea35db-4a7d-4064-a43d-340618535fbd
+      MICROSOFT_REDIRECT_URI: https://dcam.ctec-shop.co.uk/auth/microsoft/callback
+      DCAM_PUBLIC_URL: https://dcam.ctec-shop.co.uk
       SEED_ADMIN_EMAIL: admin@dcam.local
       SEED_ADMIN_PASSWORD: ChangeMe123!
       SEED_ADMIN_NAME: DCAM Super Admin
@@ -47,7 +52,7 @@
       context: ./frontend
       args:
         VITE_API_URL: http://localhost:5056
-    image: ghcr.io/christianrobertson36/dcam-web:v34
+    image: ghcr.io/christianrobertson36/dcam-web:v52
     container_name: dcam-web
     restart: unless-stopped
     ports:

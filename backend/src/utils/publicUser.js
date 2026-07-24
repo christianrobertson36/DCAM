@@ -10,6 +10,7 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    auth_provider: user.auth_provider || "local",
     permissions: getPermissionsForRole(user.role),
     status: user.status,
     created_at: user.created_at,

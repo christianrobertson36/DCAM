@@ -373,6 +373,36 @@ const articles = [
     }
   },
   {
+    id: "microsoft-sign-in",
+    category: "admin",
+    en: {
+      title: "Signing in with your Microsoft work account",
+      summary: "Use the same secure Microsoft account that your company uses for Microsoft 365.",
+      steps: [
+        "Ask your DCAM administrator to create an active DCAM user with the same email address as your Microsoft work account.",
+        "On the DCAM login screen, press Sign in with Microsoft.",
+        "Choose your company account on the Microsoft page and complete any company security check.",
+        "The first successful sign-in safely links that Microsoft identity to your existing DCAM user.",
+        "DCAM still uses your assigned role and permissions, so Microsoft sign-in does not give extra access.",
+        "If your company is not approved or your email has not been invited, contact your DCAM administrator."
+      ],
+      tip: "Local DCAM sign-in remains available as an administrator recovery option. Never share either account with another person."
+    },
+    ro: {
+      title: "Autentificarea cu contul Microsoft de serviciu",
+      summary: "Folositi acelasi cont Microsoft securizat utilizat de companie pentru Microsoft 365.",
+      steps: [
+        "Cereti administratorului DCAM sa creeze un utilizator DCAM activ cu aceeasi adresa de email ca a contului Microsoft de serviciu.",
+        "Pe ecranul de autentificare DCAM, apasati Autentificare cu Microsoft.",
+        "Alegeti contul companiei pe pagina Microsoft si finalizati verificarea de securitate ceruta.",
+        "Prima autentificare reusita asociaza in siguranta identitatea Microsoft cu utilizatorul DCAM existent.",
+        "DCAM foloseste in continuare rolul si permisiunile alocate, astfel autentificarea Microsoft nu ofera acces suplimentar.",
+        "Daca firma nu este aprobata sau adresa nu a fost invitata, contactati administratorul DCAM."
+      ],
+      tip: "Autentificarea DCAM locala ramane disponibila pentru recuperarea contului de administrator. Nu partajati conturile cu alte persoane."
+    }
+  },
+  {
     id: "troubleshooting",
     category: "admin",
     en: {

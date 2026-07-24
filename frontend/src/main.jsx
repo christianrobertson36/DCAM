@@ -71,6 +71,7 @@ import {
   getFormTemplateSummary,
   getMaintenancePlanSummary,
   getMe,
+  getMicrosoftSsoStatus,
   getPipelineSummary,
   getCommercialSummary,
   getQuotation,
@@ -117,6 +118,7 @@ import {
   listTechnicianJobs,
   listWorkOrders,
   login,
+  microsoftLoginUrl,
   addServiceRequestUpdate,
   closeServiceRequest,
   closeDefect,
@@ -208,12 +210,24 @@ const TRANSLATIONS = {
     "v34 Pipeline": "v34 Pipeline",
     "v50 Sample Data Currency and SQL Fix": "v50 Remediere moneda si SQL pentru date exemplu",
     "v51 Sample Commercial Relationship Fix": "v51 Remediere legaturi comerciale pentru date exemplu",
+    "v52 Microsoft SSO Foundation": "v52 Fundament autentificare Microsoft",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
     "Password": "Parola",
     "Signing in...": "Autentificare...",
     "Sign in": "Autentificare",
+    "Sign in with Microsoft": "Autentificare cu Microsoft",
+    "Use your company Microsoft account": "Folositi contul Microsoft al companiei",
+    "or use a local DCAM account": "sau folositi un cont DCAM local",
+    "Microsoft sign-in is not configured yet.": "Autentificarea Microsoft nu este configurata inca.",
+    "Microsoft sign-in was cancelled.": "Autentificarea Microsoft a fost anulata.",
+    "Microsoft returned an invalid response. Please try again.": "Microsoft a returnat un raspuns nevalid. Incercati din nou.",
+    "Your company is not yet approved for Microsoft sign-in.": "Compania dumneavoastra nu este inca aprobata pentru autentificarea Microsoft.",
+    "Your Microsoft email has not been invited to DCAM.": "Adresa Microsoft nu a fost invitata in DCAM.",
+    "Your DCAM account is inactive.": "Contul DCAM este inactiv.",
+    "This DCAM account is linked to a different Microsoft identity.": "Acest cont DCAM este asociat unei alte identitati Microsoft.",
+    "Microsoft sign-in failed. Please try again or use a local account.": "Autentificarea Microsoft a esuat. Incercati din nou sau folositi un cont local.",
     "Login failed": "Autentificarea a esuat",
     "Dev admin: admin@dcam.local / ChangeMe123!": "Admin dezvoltare: admin@dcam.local / ChangeMe123!",
     "Dashboard": "Panou",
@@ -1363,6 +1377,7 @@ function App() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [language, setLanguage] = useState(() => safeGetStorageItem("dcam_language") || "en");
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  const [microsoftError, setMicrosoftError] = useState("");
 
   useEffect(() => {
     getBranding()
@@ -1375,7 +1390,21 @@ function App() {
   }, [branding]);
 
   useEffect(() => {
-    const token = safeGetStorageItem("dcam_token");
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const microsoftToken = hash.get("microsoft_token");
+    const microsoftErrorCode = hash.get("microsoft_error");
+
+    if (microsoftToken) {
+      safeSetStorageItem("dcam_token", microsoftToken);
+    }
+    if (microsoftErrorCode) {
+      setMicrosoftError(microsoftErrorCode);
+    }
+    if (microsoftToken || microsoftErrorCode) {
+      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+    }
+
+    const token = microsoftToken || safeGetStorageItem("dcam_token");
 
     if (!token) {
       setCheckingSession(false);
@@ -1428,17 +1457,41 @@ function App() {
   }
 
   if (!user) {
-    return <LoginScreen branding={branding} language={language} onLanguageChange={setLanguage} onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen branding={branding} language={language} microsoftError={microsoftError} onLanguageChange={setLanguage} onLoginSuccess={handleLoginSuccess} />;
   }
 
   return <AdminShell branding={branding} onBrandingChange={setBranding} language={language} onLanguageChange={setLanguage} user={user} onLogout={handleLogout} />;
 }
 
-function LoginScreen({ branding, language, onLanguageChange, onLoginSuccess }) {
+const MICROSOFT_ERROR_MESSAGES = {
+  not_configured: "Microsoft sign-in is not configured yet.",
+  cancelled: "Microsoft sign-in was cancelled.",
+  invalid_response: "Microsoft returned an invalid response. Please try again.",
+  tenant_not_approved: "Your company is not yet approved for Microsoft sign-in.",
+  account_not_invited: "Your Microsoft email has not been invited to DCAM.",
+  account_inactive: "Your DCAM account is inactive.",
+  account_link_conflict: "This DCAM account is linked to a different Microsoft identity.",
+  sign_in_failed: "Microsoft sign-in failed. Please try again or use a local account."
+};
+
+function LoginScreen({ branding, language, microsoftError, onLanguageChange, onLoginSuccess }) {
   const [email, setEmail] = useState("admin@dcam.local");
   const [password, setPassword] = useState("ChangeMe123!");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [microsoftEnabled, setMicrosoftEnabled] = useState(false);
+
+  useEffect(() => {
+    getMicrosoftSsoStatus()
+      .then((data) => setMicrosoftEnabled(Boolean(data.microsoft?.enabled)))
+      .catch(() => setMicrosoftEnabled(false));
+  }, []);
+
+  useEffect(() => {
+    if (microsoftError) {
+      setError(MICROSOFT_ERROR_MESSAGES[microsoftError] || MICROSOFT_ERROR_MESSAGES.sign_in_failed);
+    }
+  }, [microsoftError]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1464,6 +1517,21 @@ function LoginScreen({ branding, language, onLanguageChange, onLoginSuccess }) {
         <p className="login-intro">
           {branding.tagline}
         </p>
+
+        {microsoftEnabled ? (
+          <>
+            <button className="microsoft-login-button" type="button" onClick={() => window.location.assign(microsoftLoginUrl())}>
+              <span className="microsoft-logo" aria-hidden="true">
+                <i /><i /><i /><i />
+              </span>
+              <span>
+                <strong>Sign in with Microsoft</strong>
+                <small>Use your company Microsoft account</small>
+              </span>
+            </button>
+            <div className="login-separator"><span>or use a local DCAM account</span></div>
+          </>
+        ) : null}
 
         <label>
           Email
@@ -1599,7 +1667,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v51 Sample Commercial Relationship Fix</p>
+            <p className="eyebrow">v52 Microsoft SSO Foundation</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
