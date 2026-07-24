@@ -652,11 +652,17 @@ const TRANSLATIONS = {
     "Save Settings": "Salveaza setarile",
     "Settings saved on this device.": "Setarile au fost salvate pe acest dispozitiv.",
     "Sample Data": "Date exemplu",
+    "Operating Company Demo": "Demo companie operationala",
+    "Install a connected operating-company dataset across CRM, sites, assets, planned and reactive work, compliance, defects, service desk, sales, contracts, reports and certificates.": "Instalati un set de date conectat pentru o companie operationala in CRM, site-uri, active, lucrari planificate si reactive, conformitate, defecte, service desk, vanzari, contracte, rapoarte si certificate.",
+    "All dates are relative to installation day, so dashboards include current, upcoming and overdue activity.": "Toate datele sunt raportate la ziua instalarii, astfel incat panourile includ activitati curente, viitoare si intarziate.",
     "Install demo records across customers, buildings, assets, work orders, schedule, people and technician jobs.": "Instalati inregistrari demo pentru clienti, cladiri, active, comenzi de lucru, programare, personal si joburi tehnicieni.",
     "Installed": "Instalat",
     "Not installed": "Neinstalat",
     "Checklists": "Liste verificare",
     "Sign-Offs": "Semnari",
+    "Quotes": "Oferte",
+    "Customer Activity": "Activitate client",
+    "Forms": "Formulare",
     "Working...": "Se lucreaza...",
     "Install Sample Data": "Instaleaza date exemplu",
     "I understand this deletes only installed sample data.": "Inteleg ca se sterg doar datele exemplu instalate.",
@@ -1590,7 +1596,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v48 Contract Automation Stability Fix</p>
+            <p className="eyebrow">v49 Operating Company Sample Data</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -9865,8 +9871,10 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
         <section className="table-card settings-card">
           <div className="settings-tool-header">
             <div>
+              <p className="eyebrow">Operating Company Demo</p>
               <h3>Sample Data</h3>
-              <p>Install demo records across customers, buildings, assets, work orders, schedule, people and technician jobs.</p>
+              <p>Install a connected operating-company dataset across CRM, sites, assets, planned and reactive work, compliance, defects, service desk, sales, contracts, reports and certificates.</p>
+              <p className="settings-helper">All dates are relative to installation day, so dashboards include current, upcoming and overdue activity.</p>
             </div>
             <span className={sampleStatus?.installed ? "status-pill active" : "status-pill"}>
               {sampleStatus?.installed ? "Installed" : "Not installed"}
@@ -9876,13 +9884,23 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
           <div className="settings-summary-grid">
             {[
               { label: "Customers", value: sampleStatus?.counts?.customers || 0 },
+              { label: "Contacts", value: sampleStatus?.counts?.contacts || 0 },
               { label: "Buildings", value: sampleStatus?.counts?.buildings || 0 },
               { label: "Assets", value: sampleStatus?.counts?.assets || 0 },
               { label: "Work Orders", value: sampleStatus?.counts?.work_orders || 0 },
               { label: "Schedule", value: sampleStatus?.counts?.schedule_assignments || 0 },
-              { label: "People", value: sampleStatus?.counts?.staff_profiles || 0 },
-              { label: "Checklists", value: sampleStatus?.counts?.checklist_items || 0 },
-              { label: "Sign-Offs", value: sampleStatus?.counts?.signatures || 0 }
+              { label: "Maintenance", value: sampleStatus?.counts?.maintenance_plans || 0 },
+              { label: "Compliance", value: sampleStatus?.counts?.compliance_services || 0 },
+              { label: "Defects", value: sampleStatus?.counts?.defects || 0 },
+              { label: "Service Requests", value: sampleStatus?.counts?.service_requests || 0 },
+              { label: "Opportunities", value: sampleStatus?.counts?.opportunities || 0 },
+              { label: "Quotes", value: sampleStatus?.counts?.quotations || 0 },
+              { label: "Contracts", value: sampleStatus?.counts?.contracts || 0 },
+              { label: "Recurring Services", value: sampleStatus?.counts?.contract_services || 0 },
+              { label: "Reports", value: sampleStatus?.counts?.reports || 0 },
+              { label: "Certificates", value: sampleStatus?.counts?.certificates || 0 },
+              { label: "Forms", value: sampleStatus?.counts?.form_templates || 0 },
+              { label: "Customer Activity", value: sampleStatus?.counts?.customer_activities || 0 }
             ].map((card) => (
               <article className="mini-card" key={card.label}>
                 <span>{card.label}</span>

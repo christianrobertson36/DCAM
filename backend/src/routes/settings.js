@@ -7,9 +7,10 @@ const { PERMISSIONS } = require("../config/permissions");
 const { getPool } = require("../db/pool");
 const { authRequired, requirePermission } = require("../middleware/authRequired");
 const { writeAuditEvent } = require("../utils/audit");
+const comprehensiveSample = require("../utils/sampleData");
 
 const router = express.Router();
-const SAMPLE_KEY = "dcam-v24-sample-data";
+const SAMPLE_KEY = comprehensiveSample.SAMPLE_KEY;
 const uploadRoot = path.resolve(process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads"));
 const brandingUploadRoot = path.join(uploadRoot, "branding");
 const BRANDING_DEFAULTS = {
@@ -753,7 +754,7 @@ async function createSampleData(client, userId) {
 router.get("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), async (req, res, next) => {
   try {
     const pool = getPool();
-    const status = await sampleCounts(pool);
+    const status = await comprehensiveSample.sampleCounts(pool);
 
     return res.json({
       ok: true,
@@ -770,7 +771,7 @@ router.post("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), async
 
   try {
     await client.query("BEGIN");
-    const before = await sampleCounts(client);
+    const before = await comprehensiveSample.sampleCounts(client);
 
     if (before.installed) {
       await client.query("COMMIT");
@@ -782,7 +783,7 @@ router.post("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), async
       });
     }
 
-    const created = await createSampleData(client, req.user.id);
+    const created = await comprehensiveSample.createSampleData(client, req.user.id);
 
     await writeAuditEvent(client, {
       actorUserId: req.user.id,
@@ -795,7 +796,7 @@ router.post("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), async
       }
     });
 
-    const after = await sampleCounts(client);
+    const after = await comprehensiveSample.sampleCounts(client);
     await client.query("COMMIT");
 
     return res.status(201).json({
@@ -818,8 +819,8 @@ router.delete("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), asy
 
   try {
     await client.query("BEGIN");
-    const before = await sampleCounts(client);
-    const deleted = await deleteSampleData(client);
+    const before = await comprehensiveSample.sampleCounts(client);
+    const deleted = await comprehensiveSample.deleteSampleData(client);
 
     await writeAuditEvent(client, {
       actorUserId: req.user.id,
@@ -833,7 +834,7 @@ router.delete("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), asy
       }
     });
 
-    const after = await sampleCounts(client);
+    const after = await comprehensiveSample.sampleCounts(client);
     await client.query("COMMIT");
 
     return res.json({
