@@ -211,6 +211,15 @@ const TRANSLATIONS = {
     "v50 Sample Data Currency and SQL Fix": "v50 Remediere moneda si SQL pentru date exemplu",
     "v51 Sample Commercial Relationship Fix": "v51 Remediere legaturi comerciale pentru date exemplu",
     "v52 Microsoft SSO Foundation": "v52 Fundament autentificare Microsoft",
+    "v53 Professional Login Experience": "v53 Experienta profesionala de autentificare",
+    "Secure access to compliance operations": "Acces securizat la operatiunile de conformitate",
+    "One secure workspace for compliance, assets and field operations.": "Un spatiu de lucru securizat pentru conformitate, active si operatiuni pe teren.",
+    "Protected company access": "Acces protejat pentru companie",
+    "Role-based permissions": "Permisiuni bazate pe roluri",
+    "English and Romanian support": "Suport in engleza si romana",
+    "Welcome back": "Bine ati revenit",
+    "Choose your preferred secure sign-in method.": "Alegeti metoda preferata de autentificare securizata.",
+    "Local account": "Cont local",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -229,7 +238,6 @@ const TRANSLATIONS = {
     "This DCAM account is linked to a different Microsoft identity.": "Acest cont DCAM este asociat unei alte identitati Microsoft.",
     "Microsoft sign-in failed. Please try again or use a local account.": "Autentificarea Microsoft a esuat. Incercati din nou sau folositi un cont local.",
     "Login failed": "Autentificarea a esuat",
-    "Dev admin: admin@dcam.local / ChangeMe123!": "Admin dezvoltare: admin@dcam.local / ChangeMe123!",
     "Dashboard": "Panou",
     "Customers": "Clienti",
     "Contacts": "Contacte",
@@ -1510,13 +1518,31 @@ function LoginScreen({ branding, language, microsoftError, onLanguageChange, onL
 
   return (
     <div className="login-page">
+      <section className="login-showcase">
+        <div className="login-showcase-brand">
+          <BrandMark branding={branding} />
+        </div>
+        <div>
+          <p className="eyebrow">Secure access to compliance operations</p>
+          <h1>One secure workspace for compliance, assets and field operations.</h1>
+          <p>{branding.tagline}</p>
+        </div>
+        <div className="login-trust-list">
+          <span><ClipboardCheck size={18} />Protected company access</span>
+          <span><Users size={18} />Role-based permissions</span>
+          <span><CircleHelp size={18} />English and Romanian support</span>
+        </div>
+      </section>
+
       <form className="login-card" onSubmit={handleSubmit}>
-        <BrandMark branding={branding} />
-        <p className="eyebrow">Secure customer & operations access</p>
-        <h1>Sign in to {branding.product_name}</h1>
-        <p className="login-intro">
-          {branding.tagline}
-        </p>
+        <div className="login-card-heading">
+          <BrandMark branding={branding} />
+          <div>
+            <p className="eyebrow">Welcome back</p>
+            <h2>Sign in to {branding.product_name}</h2>
+          </div>
+        </div>
+        <p className="login-intro">Choose your preferred secure sign-in method.</p>
 
         {microsoftEnabled ? (
           <>
@@ -1533,6 +1559,7 @@ function LoginScreen({ branding, language, microsoftError, onLanguageChange, onL
           </>
         ) : null}
 
+        <p className="local-login-label">Local account</p>
         <label>
           Email
           <input
@@ -1558,10 +1585,6 @@ function LoginScreen({ branding, language, microsoftError, onLanguageChange, onL
         <button className="primary-button" type="submit" disabled={busy}>
           {busy ? "Signing in..." : "Sign in"}
         </button>
-
-        <div className="dev-note">
-          Dev admin: admin@dcam.local / ChangeMe123!
-        </div>
 
         {branding.show_powered_by && branding.product_name !== "DCAM" ? <div className="powered-by">Powered by DCAM</div> : null}
 
@@ -1667,7 +1690,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v52 Microsoft SSO Foundation</p>
+            <p className="eyebrow">v53 Professional Login Experience</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
