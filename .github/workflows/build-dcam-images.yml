@@ -14,13 +14,13 @@ env:
   REGISTRY: ghcr.io
   API_IMAGE: ghcr.io/christianrobertson36/dcam-api
   WEB_IMAGE: ghcr.io/christianrobertson36/dcam-web
-  API_TAG: v47
-  WEB_TAG: v47
+  API_TAG: v48
+  WEB_TAG: v48
   PUBLIC_API_URL: https://dcam.ctec-shop.co.uk
 
 jobs:
   build-api:
-    name: Build API v47
+    name: Build API v48
     runs-on: ubuntu-latest
 
     steps:
@@ -46,7 +46,7 @@ jobs:
           tags: ${{ env.API_IMAGE }}:${{ env.API_TAG }}
 
   build-web:
-    name: Build Web v47
+    name: Build Web v48
     runs-on: ubuntu-latest
 
     steps:

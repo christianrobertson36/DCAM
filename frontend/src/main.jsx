@@ -1590,7 +1590,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v47 Contract Renewals & Recurring Services</p>
+            <p className="eyebrow">v48 Contract Automation Stability Fix</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -3319,7 +3319,6 @@ function PipelinePage({ user }) {
   const [form, setForm] = useState(emptyOpportunity);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const canCreate = hasPermission(user, PERMISSIONS.PIPELINE_CREATE);
   const canEdit = hasPermission(user, PERMISSIONS.PIPELINE_EDIT);
   const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
@@ -3665,6 +3664,7 @@ function CommercialPage({ user, language }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const canCreate = hasPermission(user, PERMISSIONS.PIPELINE_CREATE);
   const canEdit = hasPermission(user, PERMISSIONS.PIPELINE_EDIT);
   const canCreateService = hasPermission(user, PERMISSIONS.MAINTENANCE_PLANS_CREATE);
