@@ -35,6 +35,18 @@ async function quoteWithItems(pool, quoteId) {
   return { ...quote.rows[0], items: items.rows };
 }
 
+function advanceDate(value, frequency) {
+  const next = new Date(`${value}T12:00:00Z`);
+  const months = { Monthly: 1, Quarterly: 3, "Six Monthly": 6, Annual: 12 }[frequency] || 12;
+  next.setUTCMonth(next.getUTCMonth() + months);
+  return next.toISOString().slice(0, 10);
+}
+
+async function workOrderReference(pool) {
+  const result = await pool.query("SELECT 'WO-' || LPAD(nextval('work_order_reference_seq')::TEXT, 6, '0') AS reference");
+  return result.rows[0].reference;
+}
+
 router.get("/summary", requirePermission(PERMISSIONS.PIPELINE_VIEW), async (req, res, next) => {
   try {
     const pool = getPool();
@@ -44,7 +56,10 @@ router.get("/summary", requirePermission(PERMISSIONS.PIPELINE_VIEW), async (req,
         (SELECT COUNT(*)::int FROM quotations WHERE status IN ('Draft', 'Sent')) AS open_quotations,
         (SELECT COALESCE(SUM(total), 0) FROM quotations WHERE status IN ('Draft', 'Sent')) AS quoted_value,
         (SELECT COUNT(*)::int FROM contracts WHERE status = 'Active') AS active_contracts,
-        (SELECT COALESCE(SUM(value), 0) FROM contracts WHERE status = 'Active') AS contract_value
+        (SELECT COALESCE(SUM(value), 0) FROM contracts WHERE status = 'Active') AS contract_value,
+        (SELECT COUNT(*)::int FROM contracts WHERE status = 'Active' AND renewal_date < CURRENT_DATE) AS overdue_renewals,
+        (SELECT COUNT(*)::int FROM contracts WHERE status = 'Active' AND renewal_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 90) AS renewals_due_90,
+        (SELECT COUNT(*)::int FROM contract_services WHERE status = 'Active' AND next_due_date <= CURRENT_DATE) AS services_due
     `);
     return res.json({ ok: true, summary: result.rows[0] });
   } catch (error) { return next(error); }
@@ -156,14 +171,147 @@ router.post("/quotations/:id/contract", requirePermission(PERMISSIONS.PIPELINE_E
 router.get("/contracts", requirePermission(PERMISSIONS.PIPELINE_VIEW), async (req, res, next) => {
   try {
     const result = await getPool().query(`
-      SELECT co.*, c.company_name AS customer_name, b.name AS building_name
+      SELECT co.*, c.company_name AS customer_name, b.name AS building_name,
+             u.name AS renewal_owner_name,
+             (SELECT COUNT(*)::int FROM contract_services cs WHERE cs.contract_id = co.id AND cs.status = 'Active') AS service_count
       FROM contracts co
       JOIN customers c ON c.id = co.customer_id
       LEFT JOIN buildings b ON b.id = co.building_id
+      LEFT JOIN users u ON u.id = co.renewal_owner_id
       ORDER BY co.updated_at DESC, co.id DESC LIMIT 250
     `);
     return res.json({ ok: true, contracts: result.rows });
   } catch (error) { return next(error); }
+});
+
+router.get("/contracts/:id", requirePermission(PERMISSIONS.PIPELINE_VIEW), async (req, res, next) => {
+  try {
+    const pool = getPool();
+    const contractId = id(req.params.id);
+    const contract = await pool.query(`
+      SELECT co.*, c.company_name AS customer_name, b.name AS building_name, u.name AS renewal_owner_name
+      FROM contracts co
+      JOIN customers c ON c.id = co.customer_id
+      LEFT JOIN buildings b ON b.id = co.building_id
+      LEFT JOIN users u ON u.id = co.renewal_owner_id
+      WHERE co.id = $1
+    `, [contractId]);
+    if (!contract.rows[0]) return res.status(404).json({ ok: false, error: "Contract not found" });
+    const services = await pool.query(`
+      SELECT cs.*, b.name AS building_name, a.asset_name, u.name AS assigned_user_name
+      FROM contract_services cs
+      LEFT JOIN buildings b ON b.id = cs.building_id
+      LEFT JOIN assets a ON a.id = cs.asset_id
+      LEFT JOIN users u ON u.id = cs.assigned_user_id
+      WHERE cs.contract_id = $1 ORDER BY cs.next_due_date, cs.id
+    `, [contractId]);
+    return res.json({ ok: true, contract: { ...contract.rows[0], services: services.rows } });
+  } catch (error) { return next(error); }
+});
+
+router.patch("/contracts/:id/renewal", requirePermission(PERMISSIONS.PIPELINE_EDIT), async (req, res, next) => {
+  try {
+    const contractId = id(req.params.id);
+    const pool = getPool();
+    const result = await pool.query(`
+      UPDATE contracts SET renewal_date = COALESCE($2, renewal_date), renewal_status = COALESCE($3, renewal_status),
+        renewal_owner_id = $4, renewal_notice_days = COALESCE($5, renewal_notice_days),
+        updated_by = $6, updated_at = NOW() WHERE id = $1 RETURNING id
+    `, [contractId, date(req.body.renewal_date), text(req.body.renewal_status), id(req.body.renewal_owner_id), Number(req.body.renewal_notice_days) || 90, req.user.id]);
+    if (!result.rows[0]) return res.status(404).json({ ok: false, error: "Contract not found" });
+    await writeAuditEvent(pool, { actorUserId: req.user.id, action: "contract.renewal_updated", entityType: "contract", entityId: contractId });
+    return res.json({ ok: true });
+  } catch (error) { return next(error); }
+});
+
+router.post("/contracts/:id/renewal-opportunity", requirePermission(PERMISSIONS.PIPELINE_CREATE), async (req, res, next) => {
+  try {
+    const contractId = id(req.params.id);
+    const pool = getPool();
+    const contractResult = await pool.query("SELECT * FROM contracts WHERE id = $1", [contractId]);
+    const contract = contractResult.rows[0];
+    if (!contract) return res.status(404).json({ ok: false, error: "Contract not found" });
+    if (contract.renewal_opportunity_id) return res.status(409).json({ ok: false, error: "Renewal opportunity already exists" });
+    const reference = await pool.query("SELECT 'OPP-' || LPAD(nextval('opportunity_reference_seq')::TEXT, 6, '0') AS reference");
+    const opportunity = await pool.query(`
+      INSERT INTO pipeline_opportunities (
+        customer_id, opportunity_reference, opportunity_name, stage, status, estimated_value,
+        probability, expected_close_date, owner_user_id, source, next_action, notes, created_by, updated_by
+      ) VALUES ($1,$2,$3,'Qualified','Open',$4,75,$5,$6,'Contract Renewal',$7,$8,$9,$9) RETURNING id
+    `, [
+      contract.customer_id, reference.rows[0].reference, `${contract.title} Renewal`, contract.value,
+      contract.renewal_date, contract.renewal_owner_id, "Contact customer and prepare renewal quotation",
+      `Renewal for ${contract.contract_reference}`, req.user.id
+    ]);
+    await pool.query("UPDATE contracts SET renewal_opportunity_id = $2, renewal_status = 'In Progress', updated_by = $3, updated_at = NOW() WHERE id = $1", [contractId, opportunity.rows[0].id, req.user.id]);
+    await writeAuditEvent(pool, { actorUserId: req.user.id, action: "contract.renewal_opportunity_created", entityType: "contract", entityId: contractId, metadata: { opportunity_id: opportunity.rows[0].id } });
+    return res.status(201).json({ ok: true, opportunity_id: opportunity.rows[0].id });
+  } catch (error) { return next(error); }
+});
+
+router.post("/contracts/:id/services", requirePermission(PERMISSIONS.MAINTENANCE_PLANS_CREATE), async (req, res, next) => {
+  try {
+    const contractId = id(req.params.id);
+    const serviceName = text(req.body.service_name);
+    const nextDueDate = date(req.body.next_due_date);
+    if (!contractId || !serviceName || !nextDueDate) return res.status(400).json({ ok: false, error: "Service name and next due date are required" });
+    const pool = getPool();
+    const contract = await pool.query("SELECT id FROM contracts WHERE id = $1", [contractId]);
+    if (!contract.rows[0]) return res.status(404).json({ ok: false, error: "Contract not found" });
+    const result = await pool.query(`
+      INSERT INTO contract_services (
+        contract_id, service_name, frequency, priority, building_id, asset_id, assigned_user_id,
+        next_due_date, estimated_duration_minutes, instructions, created_by, updated_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11) RETURNING id
+    `, [
+      contractId, serviceName, text(req.body.frequency) || "Annual", text(req.body.priority) || "Normal",
+      id(req.body.building_id), id(req.body.asset_id), id(req.body.assigned_user_id), nextDueDate,
+      id(req.body.estimated_duration_minutes), text(req.body.instructions), req.user.id
+    ]);
+    await writeAuditEvent(pool, { actorUserId: req.user.id, action: "contract.service_created", entityType: "contract_service", entityId: result.rows[0].id, metadata: { contract_id: contractId } });
+    return res.status(201).json({ ok: true, service_id: result.rows[0].id });
+  } catch (error) { return next(error); }
+});
+
+router.post("/automation/generate-due-work", requirePermission(PERMISSIONS.WORK_ORDERS_CREATE), async (req, res, next) => {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const due = await client.query(`
+      SELECT cs.*, co.customer_id, COALESCE(cs.building_id, co.building_id) AS effective_building_id,
+             co.contract_reference
+      FROM contract_services cs
+      JOIN contracts co ON co.id = cs.contract_id
+      WHERE cs.status = 'Active' AND co.status = 'Active' AND cs.next_due_date <= CURRENT_DATE
+      ORDER BY cs.next_due_date FOR UPDATE
+    `);
+    let generated = 0;
+    for (const service of due.rows) {
+      const workOrder = await client.query(`
+        INSERT INTO work_orders (
+          work_order_reference, work_order_type, title, description, priority, status,
+          customer_id, building_id, asset_id, assigned_user_id, due_date, created_by, updated_by,
+          contract_id, contract_service_id, generated_for_date
+        ) VALUES ($1,'Planned',$2,$3,$4,'Open',$5,$6,$7,$8,$9,$10,$10,$11,$12,$9)
+        ON CONFLICT (contract_service_id, generated_for_date) WHERE contract_service_id IS NOT NULL AND generated_for_date IS NOT NULL
+        DO NOTHING RETURNING id
+      `, [
+        await workOrderReference(client), service.service_name,
+        `${service.instructions || "Complete contracted recurring service"}\nContract: ${service.contract_reference}`,
+        service.priority, service.customer_id, service.effective_building_id, service.asset_id,
+        service.assigned_user_id, service.next_due_date, req.user.id, service.contract_id, service.id
+      ]);
+      if (workOrder.rows[0]) generated += 1;
+      await client.query("UPDATE contract_services SET last_generated_date = next_due_date, next_due_date = $2, updated_by = $3, updated_at = NOW() WHERE id = $1", [service.id, advanceDate(service.next_due_date, service.frequency), req.user.id]);
+    }
+    await writeAuditEvent(client, { actorUserId: req.user.id, action: "contract_services.due_work_generated", entityType: "contract_service", entityId: null, metadata: { generated } });
+    await client.query("COMMIT");
+    return res.json({ ok: true, generated });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return next(error);
+  } finally { client.release(); }
 });
 
 module.exports = router;

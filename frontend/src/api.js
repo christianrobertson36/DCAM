@@ -272,6 +272,36 @@ export async function listContracts() {
   return apiRequest("/api/commercial/contracts");
 }
 
+export async function getContract(id) {
+  return apiRequest(`/api/commercial/contracts/${id}`);
+}
+
+export async function updateContractRenewal(id, payload) {
+  return apiRequest(`/api/commercial/contracts/${id}/renewal`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function createContractRenewalOpportunity(id) {
+  return apiRequest(`/api/commercial/contracts/${id}/renewal-opportunity`, {
+    method: "POST"
+  });
+}
+
+export async function createContractService(id, payload) {
+  return apiRequest(`/api/commercial/contracts/${id}/services`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function generateDueContractWork() {
+  return apiRequest("/api/commercial/automation/generate-due-work", {
+    method: "POST"
+  });
+}
+
 export async function getBuildingSummary() {
   return apiRequest("/api/buildings/summary");
 }

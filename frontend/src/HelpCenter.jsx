@@ -142,7 +142,9 @@ const articles = [
         "Open Quotes & Contracts and press New Quotation.",
         "Choose the customer and add clear priced lines for every service.",
         "Change the quotation to Sent when it has gone to the customer.",
-        "Change it to Accepted after approval, then press Create Contract."
+        "Change it to Accepted after approval, then press Create Contract.",
+        "Open Manage beside the contract to set its renewal owner and renewal date.",
+        "Add recurring services, then use Generate Due Work to create planned work orders."
       ],
       tip: "Only mark a quotation Accepted when the customer has genuinely approved it. This protects the commercial history."
     },
@@ -155,7 +157,9 @@ const articles = [
         "Deschideti Oferte si contracte si apasati Oferta noua.",
         "Alegeti clientul si adaugati linii clare cu pret pentru fiecare serviciu.",
         "Schimbati oferta in Trimisa dupa ce a fost transmisa clientului.",
-        "Schimbati-o in Acceptata dupa aprobare, apoi apasati Creeaza contract."
+        "Schimbati-o in Acceptata dupa aprobare, apoi apasati Creeaza contract.",
+        "Deschideti Administreaza langa contract pentru responsabilul si data reinnoirii.",
+        "Adaugati servicii recurente, apoi folositi Genereaza lucrarile scadente."
       ],
       tip: "Marcati oferta ca Acceptata doar dupa aprobarea reala a clientului. Astfel pastrati un istoric comercial corect."
     }

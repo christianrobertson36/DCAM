@@ -31,6 +31,8 @@ import {
   createCertificate,
   createComplianceService,
   createContact,
+  createContractRenewalOpportunity,
+  createContractService,
   createCustomer,
   createCustomerActivity,
   createDefect,
@@ -61,6 +63,7 @@ import {
   getCertificateSummary,
   getComplianceServiceSummary,
   getContactSummary,
+  getContract,
   getCustomerPortalDashboard,
   getCustomerSummary,
   getCustomerOverview,
@@ -78,6 +81,7 @@ import {
   getStaffSummary,
   getTechnicianJobSummary,
   getWorkOrderSummary,
+  generateDueContractWork,
   installSampleData,
   listRecordHistory,
   listMaintenancePlans,
@@ -125,6 +129,7 @@ import {
   updateCertificate,
   updateComplianceService,
   updateContact,
+  updateContractRenewal,
   updateFormTemplate,
   updateReport,
   updateServiceRequest,
@@ -767,6 +772,31 @@ const TRANSLATIONS = {
     "Sent": "Trimisa",
     "Accepted": "Acceptata",
     "Create Contract": "Creeaza contract",
+    "v47 Contract Renewals & Recurring Services": "v47 Reinnoiri contracte si servicii recurente",
+    "Generate Due Work": "Genereaza lucrarile scadente",
+    "Overdue Renewals": "Reinnoiri intarziate",
+    "Services Due": "Servicii scadente",
+    "Manage": "Administreaza",
+    "Renewal Management": "Management reinnoire",
+    "Not Started": "Neinceput",
+    "Quoted": "Ofertat",
+    "Renewed": "Reinnoit",
+    "Not Renewing": "Nu se reinnoieste",
+    "Renewal status": "Stare reinnoire",
+    "Renewal owner": "Responsabil reinnoire",
+    "Notice days": "Zile notificare",
+    "Save Renewal": "Salveaza reinnoirea",
+    "Start Renewal Opportunity": "Porneste oportunitatea de reinnoire",
+    "Renewal opportunity created": "Oportunitate de reinnoire creata",
+    "Recurring Services": "Servicii recurente",
+    "Next due": "Urmatoarea scadenta",
+    "No recurring services added.": "Nu exista servicii recurente adaugate.",
+    "Add Recurring Service": "Adauga serviciu recurent",
+    "Creates work orders when due": "Creeaza comenzi de lucru la scadenta",
+    "Contract building": "Cladirea contractului",
+    "Duration minutes": "Durata in minute",
+    "Urgent": "Urgent",
+    "No contracted services are due today.": "Niciun serviciu contractual nu este scadent astazi.",
     "Defects & Corrective Actions": "Defecte si actiuni corective",
     "v43 Defects & Corrective Actions": "v43 Defecte si actiuni corective",
     "Control risk through verified remediation": "Controlati riscul prin remediere verificata",
@@ -1560,7 +1590,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v46 Bilingual Help Centre</p>
+            <p className="eyebrow">v47 Contract Renewals & Recurring Services</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -1876,6 +1906,7 @@ function AlertsCentre({ user, onNavigate }) {
       ["maintenance", PERMISSIONS.MAINTENANCE_PLANS_VIEW, getMaintenancePlanSummary],
       ["compliance", PERMISSIONS.COMPLIANCE_SERVICES_VIEW, getComplianceServiceSummary],
       ["certificates", PERMISSIONS.CERTIFICATES_VIEW, getCertificateSummary],
+      ["commercial", PERMISSIONS.PIPELINE_VIEW, getCommercialSummary],
       ["staff", PERMISSIONS.STAFF_VIEW, () => listStaffProfiles()]
     ].filter(([, permission]) => hasPermission(user, permission));
 
@@ -1986,6 +2017,7 @@ function buildOperationalAlerts(data) {
   const maintenance = summary("maintenance");
   const compliance = summary("compliance");
   const certificates = summary("certificates");
+  const commercial = summary("commercial");
   const assets = summary("assets");
   const expiringQualifications = (data.staff?.staff_profiles || []).reduce((total, profile) => total + Number(profile.expiring_qualifications || 0), 0);
 
@@ -1997,9 +2029,12 @@ function buildOperationalAlerts(data) {
   add(maintenance.overdue, { id: "maintenance-overdue", severity: "danger", title: `${maintenance.overdue} maintenance plan${maintenance.overdue === 1 ? " is" : "s are"} overdue`, text: "Planned maintenance requires action.", page: "Maintenance Plans" });
   add(compliance.failed, { id: "compliance-failed", severity: "danger", title: `${compliance.failed} failed compliance service${compliance.failed === 1 ? "" : "s"}`, text: "Review outcomes and corrective action.", page: "Compliance Services" });
   add(certificates.expired, { id: "certificates-expired", severity: "danger", title: `${certificates.expired} expired certificate${certificates.expired === 1 ? "" : "s"}`, text: "Review renewal or replacement status.", page: "Certificates" });
+  add(commercial.overdue_renewals, { id: "contracts-overdue", severity: "danger", title: `${commercial.overdue_renewals} overdue contract renewal${commercial.overdue_renewals === 1 ? "" : "s"}`, text: "Renewal date has passed and needs immediate review.", page: "Quotes & Contracts" });
   add(compliance.defects, { id: "compliance-defects", severity: "warning", title: `${compliance.defects} service${compliance.defects === 1 ? " has" : "s have"} defects`, text: "Defects have been recorded for follow-up.", page: "Compliance Services" });
   add(maintenance.due_soon, { id: "maintenance-due", severity: "warning", title: `${maintenance.due_soon} maintenance plan${maintenance.due_soon === 1 ? " is" : "s are"} due soon`, text: "Due within the next 30 days.", page: "Maintenance Plans" });
   add(certificates.expiring_soon, { id: "certificates-expiring", severity: "warning", title: `${certificates.expiring_soon} certificate${certificates.expiring_soon === 1 ? "" : "s"} expiring soon`, text: "Expiry is within the next 30 days.", page: "Certificates" });
+  add(commercial.renewals_due_90, { id: "contracts-renewal", severity: "warning", title: `${commercial.renewals_due_90} contract renewal${commercial.renewals_due_90 === 1 ? "" : "s"} due`, text: "Renewal is within the next 90 days.", page: "Quotes & Contracts" });
+  add(commercial.services_due, { id: "contract-services-due", severity: "warning", title: `${commercial.services_due} contracted service${commercial.services_due === 1 ? "" : "s"} due`, text: "Generate planned work orders from the commercial page.", page: "Quotes & Contracts" });
   add(assets.service_due, { id: "assets-service", severity: "warning", title: `${assets.service_due} asset${assets.service_due === 1 ? " is" : "s are"} service due`, text: "Review the asset register and maintenance plan.", page: "Assets" });
   add(assets.out_of_service, { id: "assets-offline", severity: "warning", title: `${assets.out_of_service} asset${assets.out_of_service === 1 ? " is" : "s are"} out of service`, text: "Operational availability may be affected.", page: "Assets" });
   add(expiringQualifications, { id: "qualifications-expiring", severity: "warning", title: `${expiringQualifications} staff qualification${expiringQualifications === 1 ? "" : "s"} expiring`, text: "Expiry is within 60 days or has passed.", page: "People" });
@@ -3284,6 +3319,7 @@ function PipelinePage({ user }) {
   const [form, setForm] = useState(emptyOpportunity);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const canCreate = hasPermission(user, PERMISSIONS.PIPELINE_CREATE);
   const canEdit = hasPermission(user, PERMISSIONS.PIPELINE_EDIT);
   const canViewCustomers = hasPermission(user, PERMISSIONS.CUSTOMERS_VIEW);
@@ -3609,22 +3645,43 @@ function CommercialPage({ user, language }) {
   const [customers, setCustomers] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
   const [form, setForm] = useState(emptyQuotation);
   const [formOpen, setFormOpen] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [contractDetail, setContractDetail] = useState(null);
+  const [renewalForm, setRenewalForm] = useState({});
+  const [serviceForm, setServiceForm] = useState({
+    service_name: "",
+    frequency: "Annual",
+    priority: "Normal",
+    building_id: "",
+    asset_id: "",
+    assigned_user_id: "",
+    next_due_date: "",
+    estimated_duration_minutes: 60,
+    instructions: ""
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const canCreate = hasPermission(user, PERMISSIONS.PIPELINE_CREATE);
   const canEdit = hasPermission(user, PERMISSIONS.PIPELINE_EDIT);
+  const canCreateService = hasPermission(user, PERMISSIONS.MAINTENANCE_PLANS_CREATE);
+  const canGenerateWork = hasPermission(user, PERMISSIONS.WORK_ORDERS_CREATE);
+  const canViewAssets = hasPermission(user, PERMISSIONS.ASSETS_VIEW);
+  const canViewStaff = hasPermission(user, PERMISSIONS.STAFF_VIEW);
 
   async function loadCommercial() {
-    const [summaryData, quotationData, contractData, customerData, buildingData, pipelineData] = await Promise.all([
+    const [summaryData, quotationData, contractData, customerData, buildingData, pipelineData, assetData, staffData] = await Promise.all([
       getCommercialSummary(),
       listQuotations(),
       listContracts(),
       listCustomers(),
       listBuildings(),
-      listPipelineOpportunities()
+      listPipelineOpportunities(),
+      canViewAssets ? listAssets() : Promise.resolve({ assets: [] }),
+      canViewStaff ? listStaffUsers() : Promise.resolve({ users: [] })
     ]);
     setSummary(summaryData.summary || {});
     setQuotations(quotationData.quotations || []);
@@ -3632,6 +3689,8 @@ function CommercialPage({ user, language }) {
     setCustomers(customerData.customers || []);
     setBuildings(buildingData.buildings || []);
     setOpportunities(pipelineData.opportunities || []);
+    setAssets(assetData.assets || []);
+    setStaffUsers(staffData.users || []);
   }
 
   useEffect(() => {
@@ -3726,9 +3785,105 @@ function CommercialPage({ user, language }) {
     }
   }
 
+  async function openContract(contract) {
+    setError("");
+    try {
+      const response = await getContract(contract.id);
+      setContractDetail(response.contract);
+      setRenewalForm({
+        renewal_date: formatDateForInput(response.contract.renewal_date),
+        renewal_status: response.contract.renewal_status || "Not Started",
+        renewal_owner_id: response.contract.renewal_owner_id || "",
+        renewal_notice_days: response.contract.renewal_notice_days || 90
+      });
+      setServiceForm((current) => ({
+        ...current,
+        building_id: response.contract.building_id || "",
+        next_due_date: formatDateForInput(response.contract.start_date) || new Date().toISOString().slice(0, 10)
+      }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function refreshContract() {
+    if (!contractDetail) return;
+    const response = await getContract(contractDetail.id);
+    setContractDetail(response.contract);
+    await loadCommercial();
+  }
+
+  async function saveRenewal() {
+    setBusy(true);
+    setError("");
+    try {
+      await updateContractRenewal(contractDetail.id, {
+        ...renewalForm,
+        renewal_owner_id: renewalForm.renewal_owner_id ? Number(renewalForm.renewal_owner_id) : null,
+        renewal_notice_days: Number(renewalForm.renewal_notice_days || 90)
+      });
+      await refreshContract();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startRenewal() {
+    setBusy(true);
+    setError("");
+    try {
+      await createContractRenewalOpportunity(contractDetail.id);
+      await refreshContract();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addContractService(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await createContractService(contractDetail.id, {
+        ...serviceForm,
+        building_id: serviceForm.building_id ? Number(serviceForm.building_id) : null,
+        asset_id: serviceForm.asset_id ? Number(serviceForm.asset_id) : null,
+        assigned_user_id: serviceForm.assigned_user_id ? Number(serviceForm.assigned_user_id) : null,
+        estimated_duration_minutes: Number(serviceForm.estimated_duration_minutes || 0)
+      });
+      setServiceForm((current) => ({ ...current, service_name: "", instructions: "" }));
+      await refreshContract();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runDueServices() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await generateDueContractWork();
+      setNotice(result.generated ? `${result.generated} due work order${result.generated === 1 ? "" : "s"} generated.` : "No contracted services are due today.");
+      await loadCommercial();
+      if (contractDetail) await refreshContract();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const customerBuildings = buildings.filter((building) => String(building.customer_id) === String(form.customer_id));
   const customerOpportunities = opportunities.filter((opportunity) => String(opportunity.customer_id) === String(form.customer_id));
   const subtotal = form.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0);
+  const contractAssets = assets.filter((asset) => !serviceForm.building_id || String(asset.building_id) === String(serviceForm.building_id));
 
   return (
     <div className="commercial-page">
@@ -3738,7 +3893,10 @@ function CommercialPage({ user, language }) {
           <h2>Quotations and contracts</h2>
           <p>Turn customer opportunities into priced quotations and accepted work into renewable contracts.</p>
         </div>
-        {canCreate ? <button className="primary-action" onClick={openCreate} disabled={!customers.length}><Plus size={18} />New Quotation</button> : null}
+        <div className="page-intro-actions">
+          {canGenerateWork ? <button className="secondary-button" onClick={runDueServices} disabled={busy}><RefreshCw size={17} />Generate Due Work</button> : null}
+          {canCreate ? <button className="primary-action" onClick={openCreate} disabled={!customers.length}><Plus size={18} />New Quotation</button> : null}
+        </div>
       </section>
 
       <section className="mini-card-grid">
@@ -3747,11 +3905,15 @@ function CommercialPage({ user, language }) {
           ["Open Quotations", summary.open_quotations],
           ["Quoted Value", Number(summary.quoted_value || 0).toLocaleString()],
           ["Active Contracts", summary.active_contracts],
-          ["Contract Value", Number(summary.contract_value || 0).toLocaleString()]
+          ["Contract Value", Number(summary.contract_value || 0).toLocaleString()],
+          ["Renewals Due", summary.renewals_due_90],
+          ["Overdue Renewals", summary.overdue_renewals],
+          ["Services Due", summary.services_due]
         ].map(([label, value]) => <article className="mini-card" key={label}><span>{label}</span><strong>{value || 0}</strong></article>)}
       </section>
 
       {error ? <div className="login-error">{error}</div> : null}
+      {notice ? <div className="settings-success">{notice}</div> : null}
 
       <div className="commercial-grid">
         <section className="table-card">
@@ -3776,7 +3938,7 @@ function CommercialPage({ user, language }) {
               <div className="contract-row" key={contract.id}>
                 <div><strong>{contract.title}</strong><span>{contract.contract_reference}</span></div>
                 <div><span>{contract.customer_name}</span><span>{contract.currency} {Number(contract.value || 0).toLocaleString()}</span></div>
-                <div><span className={`status-badge ${statusClassName(contract.status)}`}>{tr(contract.status)}</span><span>{contract.renewal_date ? `${tr("Renewal")} ${formatDateForDisplay(contract.renewal_date)}` : tr("No renewal date")}</span></div>
+                <div><span className={`status-badge ${statusClassName(contract.status)}`}>{tr(contract.status)}</span><span>{contract.renewal_date ? `${tr("Renewal")} ${formatDateForDisplay(contract.renewal_date)}` : tr("No renewal date")}</span><button className="secondary-button" type="button" onClick={() => openContract(contract)}>{tr("Manage")}</button></div>
               </div>
             ))}
             {!contracts.length ? <div className="empty-state">No contracts created.</div> : null}
@@ -3813,6 +3975,65 @@ function CommercialPage({ user, language }) {
             <div className="form-header"><div><p className="eyebrow">{detail.quotation_reference}</p><h2>{detail.title}</h2><p>{detail.customer_name} · {detail.currency} {Number(detail.total || 0).toLocaleString()}</p></div><button className="icon-button" onClick={() => setDetail(null)}><X size={18} /></button></div>
             <div className="quotation-detail-lines">{detail.items.map((item) => <div key={item.id}><span>{item.description} · {item.quantity} × {item.unit_price}</span><strong>{detail.currency} {Number(item.line_total).toFixed(2)}</strong></div>)}</div>
             {canEdit ? <div className="form-actions"><select value={detail.status} onChange={(event) => changeStatus(event.target.value)} disabled={busy}>{["Draft", "Sent", "Accepted", "Rejected", "Expired"].map((status) => <option value={status} key={status}>{tr(status)}</option>)}</select>{detail.status === "Accepted" ? <button className="primary-action" onClick={createContract} disabled={busy}>{tr("Create Contract")}</button> : null}<button className="secondary-button" onClick={() => setDetail(null)}>Close</button></div> : null}
+          </section>
+        </div>
+      ) : null}
+
+      {contractDetail ? (
+        <div className="modal-backdrop">
+          <section className="customer-form commercial-form contract-management-modal">
+            <div className="form-header">
+              <div>
+                <p className="eyebrow">{contractDetail.contract_reference}</p>
+                <h2>{contractDetail.title}</h2>
+                <p>{contractDetail.customer_name} · {contractDetail.currency} {Number(contractDetail.value || 0).toLocaleString()}</p>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setContractDetail(null)}><X size={18} /></button>
+            </div>
+
+            <div className="contract-management-grid">
+              <section className="detail-panel">
+                <div className="table-header"><strong>Renewal Management</strong><span>{tr(contractDetail.renewal_status || "Not Started")}</span></div>
+                <div className="form-grid compact-form-grid">
+                  <Field label="Renewal date" value={renewalForm.renewal_date} onChange={(value) => setRenewalForm((current) => ({ ...current, renewal_date: value }))} type="date" disabled={!canEdit} />
+                  <label>Renewal status<select value={renewalForm.renewal_status || "Not Started"} onChange={(event) => setRenewalForm((current) => ({ ...current, renewal_status: event.target.value }))} disabled={!canEdit}>{["Not Started", "In Progress", "Quoted", "Renewed", "Not Renewing"].map((status) => <option value={status} key={status}>{tr(status)}</option>)}</select></label>
+                  <label>Renewal owner<select value={renewalForm.renewal_owner_id || ""} onChange={(event) => setRenewalForm((current) => ({ ...current, renewal_owner_id: event.target.value }))} disabled={!canEdit}><option value="">{tr("Unassigned")}</option>{staffUsers.map((staff) => <option value={staff.id} key={staff.id}>{staff.name} · {staff.role}</option>)}</select></label>
+                  <Field label="Notice days" value={renewalForm.renewal_notice_days} onChange={(value) => setRenewalForm((current) => ({ ...current, renewal_notice_days: value }))} type="number" disabled={!canEdit} />
+                </div>
+                {canEdit ? <div className="contract-action-row"><button className="secondary-button" onClick={saveRenewal} disabled={busy}><Save size={16} />Save Renewal</button>{!contractDetail.renewal_opportunity_id ? <button className="primary-action" onClick={startRenewal} disabled={busy}><Plus size={16} />Start Renewal Opportunity</button> : <span className="status-badge active">Renewal opportunity created</span>}</div> : null}
+              </section>
+
+              <section className="detail-panel">
+                <div className="table-header"><strong>Recurring Services</strong><span>{contractDetail.services?.length || 0}</span></div>
+                <div className="contract-service-list">
+                  {(contractDetail.services || []).map((service) => (
+                    <div className="contract-service-row" key={service.id}>
+                      <div><strong>{service.service_name}</strong><span>{tr(service.frequency)} · {service.building_name || tr("All sites")}</span></div>
+                      <div><span>{tr("Next due")} {formatDateForDisplay(service.next_due_date)}</span><span>{service.assigned_user_name || tr("Unassigned")}</span></div>
+                    </div>
+                  ))}
+                  {!contractDetail.services?.length ? <div className="empty-state">No recurring services added.</div> : null}
+                </div>
+              </section>
+            </div>
+
+            {canCreateService ? (
+              <form className="detail-panel contract-service-form" onSubmit={addContractService}>
+                <div className="table-header"><strong>Add Recurring Service</strong><span>Creates work orders when due</span></div>
+                <div className="form-grid">
+                  <Field label="Service name" value={serviceForm.service_name} onChange={(value) => setServiceForm((current) => ({ ...current, service_name: value }))} required />
+                  <label>Frequency<select value={serviceForm.frequency} onChange={(event) => setServiceForm((current) => ({ ...current, frequency: event.target.value }))}>{["Monthly", "Quarterly", "Six Monthly", "Annual"].map((frequency) => <option value={frequency} key={frequency}>{tr(frequency)}</option>)}</select></label>
+                  <label>Priority<select value={serviceForm.priority} onChange={(event) => setServiceForm((current) => ({ ...current, priority: event.target.value }))}>{["Low", "Normal", "High", "Urgent"].map((priority) => <option value={priority} key={priority}>{tr(priority)}</option>)}</select></label>
+                  <Field label="Next due date" value={serviceForm.next_due_date} onChange={(value) => setServiceForm((current) => ({ ...current, next_due_date: value }))} type="date" required />
+                  <label>Building<select value={serviceForm.building_id} onChange={(event) => setServiceForm((current) => ({ ...current, building_id: event.target.value, asset_id: "" }))}><option value="">{tr("Contract building")}</option>{buildings.filter((building) => String(building.customer_id) === String(contractDetail.customer_id)).map((building) => <option value={building.id} key={building.id}>{building.name}</option>)}</select></label>
+                  <label>Asset<select value={serviceForm.asset_id} onChange={(event) => setServiceForm((current) => ({ ...current, asset_id: event.target.value }))}><option value="">{tr("No asset")}</option>{contractAssets.map((asset) => <option value={asset.id} key={asset.id}>{asset.asset_reference} · {asset.asset_name}</option>)}</select></label>
+                  <label>Assigned user<select value={serviceForm.assigned_user_id} onChange={(event) => setServiceForm((current) => ({ ...current, assigned_user_id: event.target.value }))}><option value="">{tr("Unassigned")}</option>{staffUsers.map((staff) => <option value={staff.id} key={staff.id}>{staff.name}</option>)}</select></label>
+                  <Field label="Duration minutes" value={serviceForm.estimated_duration_minutes} onChange={(value) => setServiceForm((current) => ({ ...current, estimated_duration_minutes: value }))} type="number" />
+                  <label className="wide-field">Instructions<textarea value={serviceForm.instructions} onChange={(event) => setServiceForm((current) => ({ ...current, instructions: event.target.value }))} rows={3} /></label>
+                </div>
+                <div className="form-actions"><button className="primary-action" disabled={busy}><Plus size={17} />Add Service</button></div>
+              </form>
+            ) : null}
           </section>
         </div>
       ) : null}
