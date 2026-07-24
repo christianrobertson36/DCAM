@@ -783,7 +783,8 @@ router.post("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), async
       });
     }
 
-    const created = await comprehensiveSample.createSampleData(client, req.user.id);
+    const currency = req.body?.currency === "RON" ? "RON" : "GBP";
+    const created = await comprehensiveSample.createSampleData(client, req.user.id, currency);
 
     await writeAuditEvent(client, {
       actorUserId: req.user.id,
@@ -792,6 +793,7 @@ router.post("/sample-data", requirePermission(PERMISSIONS.SETTINGS_ADMIN), async
       entityId: null,
       metadata: {
         sample_data_key: SAMPLE_KEY,
+        currency,
         created
       }
     });

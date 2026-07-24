@@ -324,6 +324,7 @@ const articles = [
         "Start on Dashboard, then explore Work Orders, Schedule, Compliance, Defects, Service Desk, Pipeline and Quotes & Contracts.",
         "The example records are connected: a customer owns sites, sites contain assets, and operational and commercial records link back to them.",
         "Dates are calculated from installation day, so you will see completed, current, upcoming and overdue examples.",
+        "Commercial sample records use GBP when English is selected and RON when Romanian is selected.",
         "When training is finished, return to Settings, confirm the warning and press Delete Sample Data."
       ],
       tip: "Deletion uses a private sample marker and removes only records created by this installer. Never copy the SAMPLE reference prefix into real records."
@@ -337,6 +338,7 @@ const articles = [
         "Incepeti in Panou, apoi explorati Comenzi de lucru, Programare, Conformitate, Defecte, Birou de servicii, Pipeline si Oferte si contracte.",
         "Inregistrarile exemplu sunt conectate: un client detine site-uri, site-urile contin active, iar inregistrarile operationale si comerciale sunt legate de acestea.",
         "Datele sunt calculate din ziua instalarii, astfel incat vedeti exemple finalizate, curente, viitoare si intarziate.",
+        "Inregistrarile comerciale exemplu folosesc GBP cand este selectata engleza si RON cand este selectata romana.",
         "Cand instruirea s-a terminat, reveniti la Setari, confirmati avertismentul si apasati Sterge datele exemplu."
       ],
       tip: "Stergerea foloseste un marcaj privat si elimina doar inregistrarile create de instalator. Nu folositi prefixul SAMPLE pentru inregistrari reale."

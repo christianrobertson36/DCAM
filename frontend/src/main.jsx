@@ -206,6 +206,7 @@ const TRANSLATIONS = {
     "v32 Customer Portal": "v32 Portal client",
     "v33 Contacts": "v33 Contacte",
     "v34 Pipeline": "v34 Pipeline",
+    "v50 Sample Data Currency and SQL Fix": "v50 Remediere moneda si SQL pentru date exemplu",
     "Sign in to DCAM": "Autentificare in DCAM",
     "Digital Compliance & Asset Management for technical compliance operations.": "Digital Compliance & Asset Management pentru operatiuni tehnice de conformitate.",
     "Email": "Email",
@@ -655,6 +656,7 @@ const TRANSLATIONS = {
     "Operating Company Demo": "Demo companie operationala",
     "Install a connected operating-company dataset across CRM, sites, assets, planned and reactive work, compliance, defects, service desk, sales, contracts, reports and certificates.": "Instalati un set de date conectat pentru o companie operationala in CRM, site-uri, active, lucrari planificate si reactive, conformitate, defecte, service desk, vanzari, contracte, rapoarte si certificate.",
     "All dates are relative to installation day, so dashboards include current, upcoming and overdue activity.": "Toate datele sunt raportate la ziua instalarii, astfel incat panourile includ activitati curente, viitoare si intarziate.",
+    "Currency follows the selected language: GBP for English or RON for Romanian.": "Moneda urmeaza limba selectata: GBP pentru engleza sau RON pentru romana.",
     "Install demo records across customers, buildings, assets, work orders, schedule, people and technician jobs.": "Instalati inregistrari demo pentru clienti, cladiri, active, comenzi de lucru, programare, personal si joburi tehnicieni.",
     "Installed": "Instalat",
     "Not installed": "Neinstalat",
@@ -1596,7 +1598,7 @@ function AdminShell({ branding, onBrandingChange, language, onLanguageChange, us
               <Menu size={21} />
             </button>
             <div>
-            <p className="eyebrow">v49 Operating Company Sample Data</p>
+            <p className="eyebrow">v50 Sample Data Currency and SQL Fix</p>
             <h1>{pageTitle}</h1>
             </div>
           </div>
@@ -3706,6 +3708,8 @@ function CommercialPage({ user, language }) {
   function openCreate() {
     setForm({
       ...emptyQuotation,
+      currency: language === "ro" ? "RON" : "GBP",
+      tax_rate: language === "ro" ? 19 : 20,
       customer_id: customers[0]?.id || "",
       valid_until: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       items: [{ description: "", quantity: 1, unit_price: 0 }]
@@ -9718,7 +9722,7 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
     setSampleError("");
 
     try {
-      const data = await installSampleData();
+      const data = await installSampleData(language === "ro" ? "RON" : "GBP");
       setSampleStatus(data.sample_data);
       setDeleteConfirmed(false);
     } catch (err) {
@@ -9875,6 +9879,7 @@ function SettingsPage({ branding, onBrandingChange, language, onLanguageChange, 
               <h3>Sample Data</h3>
               <p>Install a connected operating-company dataset across CRM, sites, assets, planned and reactive work, compliance, defects, service desk, sales, contracts, reports and certificates.</p>
               <p className="settings-helper">All dates are relative to installation day, so dashboards include current, upcoming and overdue activity.</p>
+              <p className="settings-helper">Currency follows the selected language: GBP for English or RON for Romanian.</p>
             </div>
             <span className={sampleStatus?.installed ? "status-pill active" : "status-pill"}>
               {sampleStatus?.installed ? "Installed" : "Not installed"}

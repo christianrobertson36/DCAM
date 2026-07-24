@@ -93,7 +93,8 @@ function indexBy(rows, field) {
   return Object.fromEntries(rows.map((row) => [row[field], row]));
 }
 
-async function createSampleData(client, userId) {
+async function createSampleData(client, userId, requestedCurrency = "GBP") {
+  const currency = requestedCurrency === "RON" ? "RON" : "GBP";
   const created = Object.fromEntries(COUNT_TABLES.map(([, key]) => [key, 0]));
   await deleteLegacySampleData(client);
 
@@ -231,14 +232,14 @@ async function createSampleData(client, userId) {
       customer_id, building_id, asset_id, assigned_user_id, due_date, completion_notes,
       created_by, updated_by, sample_data_key
     ) VALUES
-      ('SAMPLE-WO-001', 'Planned', 'Quarterly AHU inspection', 'Inspect filters, belts, panels and airflow.', 'Normal', 'Scheduled', $1, $5, $11, $15, CURRENT_DATE + 2, NULL, $15, $15, $16),
-      ('SAMPLE-WO-002', 'Remedial', 'Repair fire door closer and seals', 'Replace defective closer and damaged intumescent seal.', 'High', 'Open', $1, $5, $12, $15, CURRENT_DATE + 5, NULL, $15, $15, $16),
-      ('SAMPLE-WO-003', 'Reactive', 'Kitchen fire damper failed to close', 'Isolate affected duct section and replace actuator.', 'Urgent', 'In Progress', $2, $7, $13, $15, CURRENT_DATE, NULL, $15, $15, $16),
-      ('SAMPLE-WO-004', 'Planned', 'Boiler seasonal service', 'Combustion analysis, safety checks and service record.', 'Normal', 'Scheduled', $2, $7, $14, $15, CURRENT_DATE + 7, NULL, $15, $15, $16),
-      ('SAMPLE-WO-005', 'Remedial', 'Investigate LV switchboard thermal damage', 'Thermal scan identified hotspot on incoming connection.', 'Urgent', 'Awaiting Customer', $3, $8, $17, $15, CURRENT_DATE - 2, 'Quotation submitted for controlled shutdown repair.', $15, $15, $16),
-      ('SAMPLE-WO-006', 'Planned', 'Air compressor monthly service', 'Check oil, filters, drains and operating temperatures.', 'Normal', 'Completed', $3, $8, $18, $15, CURRENT_DATE - 4, 'Service completed; readings within manufacturer limits.', $15, $15, $16),
-      ('SAMPLE-WO-007', 'Survey', 'Initial school fire door survey', 'Create door register and record condition at both school blocks.', 'Normal', 'Open', $4, $9, $19, $15, CURRENT_DATE + 12, NULL, $15, $15, $16),
-      ('SAMPLE-WO-008', 'Reactive', 'Emergency light intermittent fault', 'Inspect fitting and local circuit after occupant report.', 'High', 'Completed', $1, $6, $20, $15, CURRENT_DATE - 1, 'Battery pack replaced and functional test passed.', $15, $15, $16)
+      ('SAMPLE-WO-001', 'Planned', 'Quarterly AHU inspection', 'Inspect filters, belts, panels and airflow.', 'Normal', 'Scheduled', $1, $5, $10, $14, CURRENT_DATE + 2, NULL, $14, $14, $15),
+      ('SAMPLE-WO-002', 'Remedial', 'Repair fire door closer and seals', 'Replace defective closer and damaged intumescent seal.', 'High', 'Open', $1, $5, $11, $14, CURRENT_DATE + 5, NULL, $14, $14, $15),
+      ('SAMPLE-WO-003', 'Reactive', 'Kitchen fire damper failed to close', 'Isolate affected duct section and replace actuator.', 'Urgent', 'In Progress', $2, $7, $12, $14, CURRENT_DATE, NULL, $14, $14, $15),
+      ('SAMPLE-WO-004', 'Planned', 'Boiler seasonal service', 'Combustion analysis, safety checks and service record.', 'Normal', 'Scheduled', $2, $7, $13, $14, CURRENT_DATE + 7, NULL, $14, $14, $15),
+      ('SAMPLE-WO-005', 'Remedial', 'Investigate LV switchboard thermal damage', 'Thermal scan identified hotspot on incoming connection.', 'Urgent', 'Awaiting Customer', $3, $8, $16, $14, CURRENT_DATE - 2, 'Quotation submitted for controlled shutdown repair.', $14, $14, $15),
+      ('SAMPLE-WO-006', 'Planned', 'Air compressor monthly service', 'Check oil, filters, drains and operating temperatures.', 'Normal', 'Completed', $3, $8, $17, $14, CURRENT_DATE - 4, 'Service completed; readings within manufacturer limits.', $14, $14, $15),
+      ('SAMPLE-WO-007', 'Survey', 'Initial school fire door survey', 'Create door register and record condition at both school blocks.', 'Normal', 'Open', $4, $9, $18, $14, CURRENT_DATE + 12, NULL, $14, $14, $15),
+      ('SAMPLE-WO-008', 'Reactive', 'Emergency light intermittent fault', 'Inspect fitting and local circuit after occupant report.', 'High', 'Completed', $1, $6, $19, $14, CURRENT_DATE - 1, 'Battery pack replaced and functional test passed.', $14, $14, $15)
     RETURNING id, work_order_reference
     `,
     [
@@ -251,7 +252,6 @@ async function createSampleData(client, userId) {
       buildings["Danube Grand Hotel"].id,
       buildings["Cluj Production Plant"].id,
       buildings["Orizont School Brasov"].id,
-      buildings["Orizont Kindergarten"].id,
       assets["SAMPLE-AST-001"].id,
       assets["SAMPLE-AST-003"].id,
       assets["SAMPLE-AST-006"].id,
@@ -359,10 +359,10 @@ async function createSampleData(client, userId) {
       report_status, findings, corrective_actions, notes, approved_by, approved_at,
       created_by, updated_by, sample_data_key
     ) VALUES
-      ('SAMPLE-CMP-001', 'Riverside annual fire door inspection', 'Fire Door Inspection', 'Completed', 'Normal', 'Fail', 'High', $1, $5, $9, $13, $16, CURRENT_DATE - 8, CURRENT_DATE - 8, TRUE, TRUE, 'Not Issued', 'Approved', 'Door FD-GF-014 failed closer and seal checks.', 'Replace closer and intumescent seal within 14 days.', 'Remedial work order raised.', $16, NOW() - INTERVAL '7 days', $16, $16, $17),
-      ('SAMPLE-CMP-002', 'Hotel kitchen fire damper test', 'Fire Damper Inspection', 'In Progress', 'Urgent', 'Fail', 'Critical', $2, $6, $10, $14, $16, CURRENT_DATE, NULL, TRUE, TRUE, 'Not Issued', 'Draft', 'Kitchen damper did not close during drop test.', 'Replace actuator and repeat full functional test.', 'Urgent corrective action underway.', NULL, NULL, $16, $16, $17),
-      ('SAMPLE-CMP-003', 'Pipera emergency lighting inspection', 'Emergency Lighting', 'Completed', 'Normal', 'Pass with Observations', 'Low', $1, $7, $11, $15, $16, CURRENT_DATE - 3, CURRENT_DATE - 3, FALSE, TRUE, 'Issued', 'Issued', 'One intermittent fitting replaced; remaining sample passed.', 'Continue routine monthly function tests.', 'Report and certificate issued.', $16, NOW() - INTERVAL '2 days', $16, $16, $17),
-      ('SAMPLE-CMP-004', 'Orizont initial fire door survey', 'Fire Door Inspection', 'Planned', 'Normal', 'Not Started', 'Unrated', $3, $8, $12, $15, $16, CURRENT_DATE + 12, NULL, FALSE, TRUE, 'Not Required', 'Draft', NULL, NULL, 'Initial register creation for prospect site.', NULL, NULL, $16, $16, $17)
+      ('SAMPLE-CMP-001', 'Riverside annual fire door inspection', 'Fire Door Inspection', 'Completed', 'Normal', 'Fail', 'High', $1, $4, $8, $12, $16, CURRENT_DATE - 8, CURRENT_DATE - 8, TRUE, TRUE, 'Not Issued', 'Approved', 'Door FD-GF-014 failed closer and seal checks.', 'Replace closer and intumescent seal within 14 days.', 'Remedial work order raised.', $16, NOW() - INTERVAL '7 days', $16, $16, $17),
+      ('SAMPLE-CMP-002', 'Hotel kitchen fire damper test', 'Fire Damper Inspection', 'In Progress', 'Urgent', 'Fail', 'Critical', $2, $5, $9, $13, $16, CURRENT_DATE, NULL, TRUE, TRUE, 'Not Issued', 'Draft', 'Kitchen damper did not close during drop test.', 'Replace actuator and repeat full functional test.', 'Urgent corrective action underway.', NULL, NULL, $16, $16, $17),
+      ('SAMPLE-CMP-003', 'Pipera emergency lighting inspection', 'Emergency Lighting', 'Completed', 'Normal', 'Pass with Observations', 'Low', $1, $6, $10, $14, $16, CURRENT_DATE - 3, CURRENT_DATE - 3, FALSE, TRUE, 'Issued', 'Issued', 'One intermittent fitting replaced; remaining sample passed.', 'Continue routine monthly function tests.', 'Report and certificate issued.', $16, NOW() - INTERVAL '2 days', $16, $16, $17),
+      ('SAMPLE-CMP-004', 'Orizont initial fire door survey', 'Fire Door Inspection', 'Planned', 'Normal', 'Not Started', 'Unrated', $3, $7, $11, $15, $16, CURRENT_DATE + 12, NULL, FALSE, TRUE, 'Not Required', 'Draft', NULL, NULL, 'Initial register creation for prospect site.', NULL, NULL, $16, $16, $17)
     RETURNING id, service_reference
     `,
     [
@@ -489,10 +489,10 @@ async function createSampleData(client, userId) {
       valid_until, notes, subtotal, tax_rate, tax_total, total, accepted_at,
       created_by, updated_by, sample_data_key
     ) VALUES
-      ('SAMPLE-Q-001', $1, $4, $7, 'Annual fire door and PAT compliance programme', 'Sent', 'RON', CURRENT_DATE + 25, 'Includes both Orizont sites; final quantities subject to survey.', 40756.30, 19, 7743.70, 48500.00, NULL, $10, $10, $11),
-      ('SAMPLE-Q-002', $2, $5, $8, 'Carpathia multi-site PPM renewal', 'Draft', 'RON', CURRENT_DATE + 30, 'Renewal pricing for quarterly PPM and annual compliance inspections.', 105882.35, 19, 20117.65, 126000.00, NULL, $10, $10, $11),
-      ('SAMPLE-Q-003', $3, $6, $9, 'Urgent kitchen fire damper remedial works', 'Accepted', 'RON', CURRENT_DATE + 7, 'Includes replacement actuator, access and repeat drop test.', 10756.30, 19, 2043.70, 12800.00, NOW() - INTERVAL '1 day', $10, $10, $11),
-      ('SAMPLE-Q-004', $4, NULL, $12, 'LV switchboard controlled shutdown repair', 'Sent', 'RON', CURRENT_DATE + 10, 'Weekend shutdown, torque remediation and verification thermography.', 18487.39, 19, 3512.61, 22000.00, NULL, $10, $10, $11)
+      ('SAMPLE-Q-001', $1, $4, $7, 'Annual fire door and PAT compliance programme', 'Sent', '${currency}', CURRENT_DATE + 25, 'Includes both Orizont sites; final quantities subject to survey.', 40756.30, 19, 7743.70, 48500.00, NULL, $10, $10, $11),
+      ('SAMPLE-Q-002', $2, $5, $8, 'Carpathia multi-site PPM renewal', 'Draft', '${currency}', CURRENT_DATE + 30, 'Renewal pricing for quarterly PPM and annual compliance inspections.', 105882.35, 19, 20117.65, 126000.00, NULL, $10, $10, $11),
+      ('SAMPLE-Q-003', $3, $6, $9, 'Urgent kitchen fire damper remedial works', 'Accepted', '${currency}', CURRENT_DATE + 7, 'Includes replacement actuator, access and repeat drop test.', 10756.30, 19, 2043.70, 12800.00, NOW() - INTERVAL '1 day', $10, $10, $11),
+      ('SAMPLE-Q-004', $4, NULL, $12, 'LV switchboard controlled shutdown repair', 'Sent', '${currency}', CURRENT_DATE + 10, 'Weekend shutdown, torque remediation and verification thermography.', 18487.39, 19, 3512.61, 22000.00, NULL, $10, $10, $11)
     RETURNING id, quotation_reference
     `,
     [
@@ -543,9 +543,9 @@ async function createSampleData(client, userId) {
       renewal_status, renewal_owner_id, renewal_opportunity_id, renewal_notice_days,
       created_by, updated_by, sample_data_key
     ) VALUES
-      ('SAMPLE-CTR-001', NULL, $1, NULL, 'Carpathia integrated compliance and PPM contract', 'Active', CURRENT_DATE - 330, CURRENT_DATE + 35, CURRENT_DATE + 35, 118000, 'RON', 'Covers Riverside and Pipera locations.', 'In Progress', $4, $5, 90, $4, $4, $6),
-      ('SAMPLE-CTR-002', NULL, $2, $7, 'Danube Grand Hotel life-safety maintenance', 'Active', CURRENT_DATE - 160, CURRENT_DATE + 205, CURRENT_DATE + 205, 82000, 'RON', 'Annual life-safety inspections and monthly boiler PPM.', 'Not Started', $4, NULL, 90, $4, $4, $6),
-      ('SAMPLE-CTR-003', NULL, $3, $8, 'TC Manufacturing mechanical PPM', 'Active', CURRENT_DATE - 95, CURRENT_DATE + 270, CURRENT_DATE + 270, 54000, 'RON', 'Monthly compressor service and quarterly condition reporting.', 'Not Started', $4, NULL, 60, $4, $4, $6)
+      ('SAMPLE-CTR-001', NULL, $1, NULL, 'Carpathia integrated compliance and PPM contract', 'Active', CURRENT_DATE - 330, CURRENT_DATE + 35, CURRENT_DATE + 35, 118000, '${currency}', 'Covers Riverside and Pipera locations.', 'In Progress', $4, $5, 90, $4, $4, $6),
+      ('SAMPLE-CTR-002', NULL, $2, $7, 'Danube Grand Hotel life-safety maintenance', 'Active', CURRENT_DATE - 160, CURRENT_DATE + 205, CURRENT_DATE + 205, 82000, '${currency}', 'Annual life-safety inspections and monthly boiler PPM.', 'Not Started', $4, NULL, 90, $4, $4, $6),
+      ('SAMPLE-CTR-003', NULL, $3, $8, 'TC Manufacturing mechanical PPM', 'Active', CURRENT_DATE - 95, CURRENT_DATE + 270, CURRENT_DATE + 270, 54000, '${currency}', 'Monthly compressor service and quarterly condition reporting.', 'Not Started', $4, NULL, 60, $4, $4, $6)
     RETURNING id, contract_reference
     `,
     [

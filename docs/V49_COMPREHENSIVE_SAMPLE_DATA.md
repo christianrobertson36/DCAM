@@ -44,3 +44,10 @@ Real records without a sample marker are not selected for deletion.
 ## Languages
 
 The Settings explanation and Help Centre guide are available in English and Romanian.
+
+The selected interface language also controls the currency used when installing the sample commercial records:
+
+- English installs GBP quotations and contracts with a 20% default quotation tax rate.
+- Romanian installs RON quotations and contracts with a 19% default quotation tax rate.
+
+Changing language does not convert existing real or sample financial values. Currency is selected when a quotation or sample dataset is created.

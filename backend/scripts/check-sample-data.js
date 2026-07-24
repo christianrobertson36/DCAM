@@ -64,6 +64,11 @@ const client = {
     if (expected !== params.length) {
       throw new Error(`Parameter mismatch for ${insertedTable(sql) || "query"}: SQL expects ${expected}, received ${params.length}`);
     }
+    const used = new Set(placeholders);
+    const missing = Array.from({ length: expected }, (_, index) => index + 1).filter((number) => !used.has(number));
+    if (missing.length) {
+      throw new Error(`Unused parameters for ${insertedTable(sql) || "query"}: ${missing.map((number) => `$${number}`).join(", ")}`);
+    }
 
     const table = insertedTable(sql);
     const rows = returnedRows[table] || (sql.includes("RETURNING") ? [{ id: nextId++ }] : []);

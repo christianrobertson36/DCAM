@@ -793,9 +793,10 @@ export async function getSampleDataStatus() {
   return apiRequest("/api/settings/sample-data");
 }
 
-export async function installSampleData() {
+export async function installSampleData(currency = "GBP") {
   return apiRequest("/api/settings/sample-data", {
-    method: "POST"
+    method: "POST",
+    body: JSON.stringify({ currency })
   });
 }
 
